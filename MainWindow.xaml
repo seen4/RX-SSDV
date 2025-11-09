@@ -1,0 +1,58 @@
+﻿<Window x:Class="RX_SSDV.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:RX_SSDV"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800">
+    <Grid>
+        <TabControl>
+            <TabItem Header="{DynamicResource MainWindow_TabSpectrum}" d:Header="Spectrum">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="600*"/>
+                        <ColumnDefinition Width="200"/>
+                    </Grid.ColumnDefinitions>
+                    <Canvas Name="spectrum" Margin="10,10,0,10" Grid.Column ="0" Background="#FFBBBBBB">
+                        <Image Name="spectrumDisplay"/>
+                    </Canvas>
+                    <ScrollViewer Grid.Column="1" >
+                        <Grid Margin="5,10,5,10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="220"/>
+                                <RowDefinition Height="200*"/>
+                            </Grid.RowDefinitions>
+                            <GroupBox Header="Data Source">
+                                <StackPanel Orientation="Vertical" Grid.Row="0" Margin="5,5,5,5">
+                                    <ComboBox Name="dataSourceType" SelectedIndex="0" SelectionChanged="dataSourceType_SelectionChanged">
+                                        <ComboBoxItem Content="Baseband File"/>
+                                        <ComboBoxItem Content="RTL-SDR"/>
+                                    </ComboBox>
+                                    <StackPanel Orientation="Vertical" Margin="0,5,0,0">
+                                        <TextBox Name="audioPathInput" TextChanged="audioPathInput_TextChanged"/>
+                                        <Button Name="browseAudioFileBtn" Content="Browse" Margin="0,5,0,0" Click="browseAudioFileBtn_Click"/>
+                                        <Label Name="audioProgress" Content="00:00 / 00:00" FontSize="8" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                                        <Slider Name="audioProgressSlider" Value="0.0" Maximum="100"/>
+                                        <Button Name="playAudioBtn" Content="Play" Margin="0,5,0,0" Click="playAudioBtn_Click"/>
+                                        <Button Name="pauseAudioBtn" Content="Pause" Margin="0,5,0,0" Click="pauseAudioBtn_Click"/>
+                                        <Button Name="stopAudioBtn" Content="Stop" Margin="0,5,0,0" Click="stopAudioBtn_Click"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </GroupBox>
+                        </Grid>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+            <TabItem Header="{DynamicResource MainWindow_TabProcess}" d:Header="Process">
+
+            </TabItem>
+            <TabItem Header="{DynamicResource MainWindow_TabSettings}" d:Header="Setting">
+
+            </TabItem>
+            <TabItem Header="{DynamicResource MainWindow_TabLog}" d:Header="Log">
+
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>
