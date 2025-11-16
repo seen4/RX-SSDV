@@ -1,8 +1,10 @@
 ﻿using NAudio.Wave;
+using NWaves.Signals;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+//using System.Numerics;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -13,34 +15,43 @@ namespace RX_SSDV
         ISampleProvider source;
         private readonly int channels;
         private int bufferSize;
-        private float[] samples;
+        private float[] samplesReal;
+        private float[] samplesImag;
         private int sampleIndex;
 
         public int BufferSize => bufferSize;
 
-        public Action<float[]> processSamples = (samples) => { };
+        public Action<float[], float[]> processSamples = (samplesReal, samplesImag) => { };
 
         public SampleAggregator(ISampleProvider source, int bufferSize = 1024)
         {
             channels = source.WaveFormat.Channels;
             this.source = source;
             this.bufferSize = bufferSize;
-            samples = new float[bufferSize];
+            samplesReal = new float[bufferSize];
+            samplesImag = new float[bufferSize];
         }
 
         public WaveFormat WaveFormat => source.WaveFormat;
 
-        private void AddSample(float sample)
+        private void AddSample(float sampleReal, float sampleImag)
         {
-            samples[sampleIndex] = sample;
+            samplesReal[sampleIndex] = sampleReal;
+            samplesImag[sampleIndex] = sampleImag;
             sampleIndex++;
 
             if(sampleIndex > bufferSize - 1)
             {
                 sampleIndex = 0;
-                processSamples(samples);
-                samples = new float[bufferSize];
+                processSamples(samplesReal, samplesImag);
+                ClearBuffer();
             }
+        }
+
+        private void ClearBuffer()
+        {
+            Array.Clear(samplesReal, 0, samplesReal.Length);
+            Array.Clear(samplesImag, 0, samplesImag.Length);
         }
 
         public int Read(float[] buffer, int offset, int count)
@@ -49,7 +60,7 @@ namespace RX_SSDV
 
             for (int n = 0; n < samplesRead; n += channels)
             {
-                AddSample(buffer[n + offset]);
+                AddSample(buffer[n + offset], buffer[n + 1 + offset]);
             }
             return samplesRead;
         }

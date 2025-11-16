@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -113,6 +114,45 @@ namespace RX_SSDV
         {
             SampleSource.StopDirectRead();
             //SampleSource.StopAudio();
+        }
+
+        private void bandWidthInput_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            int bandwidth = 1;
+            if(int.TryParse(bandWidthInput.Text, out bandwidth))
+            {
+                if (bandwidth < 1)
+                    bandwidth = 1;
+
+                bandWidthInput.Text = $"{bandwidth}";
+                if(mainDSP != null)
+                    mainDSP.bandwidth = bandwidth;
+            }
+            else
+            {
+                bandWidthInput.Text = "0";
+            }
+        }
+
+        private void freqShiftInput_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            int freqShift = 0;
+            if (int.TryParse(freqShiftInput.Text, out freqShift))
+            {
+                freqShiftInput.Text = $"{freqShift}";
+                if (mainDSP != null)
+                    mainDSP.frequencyShift = freqShift;
+            }
+            else
+            {
+                freqShiftInput.Text = "0";
+            }
+        }
+
+        private void applyFilterBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (mainDSP != null)
+                mainDSP.UpdateFilter();
         }
     }
 }

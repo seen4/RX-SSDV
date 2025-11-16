@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Numerics;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -31,9 +31,10 @@ namespace RX_SSDV
         private static bool directRead = false;
         private static bool directReadPause = false;
 
-        public const int WAV_BUFFER_SIZE = 10240;
+        public const int WAV_BUFFER_SIZE = 2048;
 
-        public static Action<float[]> onDataAvalible = (samples) => { UpdateUI(); };
+        public static Action<float[], float[]> onDataAvalible = (samplesReal, samplesImag) => { /*UpdateUI();*/ };
+        public static Action<WaveFormat> onSourceChange = (waveFmt) => { };
 
         public static void ReadSampleDirect()
         {
@@ -48,12 +49,12 @@ namespace RX_SSDV
 
                 Task.Run(() =>
                 {
-                    float[] buffer;
+                    float[] buffer = new float[bufferSize];
                     while (directRead)
                     {
                         if (!directReadPause)
                         {
-                            buffer = new float[bufferSize];
+                            Array.Clear(buffer, 0, bufferSize);
                             sampleAggregator.Read(buffer, 0, bufferSize);
                             //offset += bufferSize;
                             //onDataAvalible(buffer);
@@ -72,6 +73,8 @@ namespace RX_SSDV
             {
                 directReadPause = false;
             }
+
+            onSourceChange(sampleAggregator.WaveFormat);
         }
 
         public static void PauseDirectRead()
@@ -113,6 +116,8 @@ namespace RX_SSDV
             {
                 playbackDevice.Play();
             }
+
+            onSourceChange(sampleAggregator.WaveFormat);
         }
 
         private static void EnsureDeviceCreated()
@@ -161,12 +166,28 @@ namespace RX_SSDV
             TimeSpan currentTime = wavFileReader.CurrentTime;
             int minCurrent = currentTime.Minutes;
             int secCurrent = currentTime.Seconds;
+
+            double valueOfSlider = (double)currentTime.TotalSeconds / (double)totalTime.TotalSeconds;
+            string timeStr = $"{minCurrent}:{secCurrent} / {minTotal}:{secTotal}";
             MainWindow.Instance.Dispatcher.Invoke(() =>
             {
-                MainWindow.Instance.audioProgressSlider.Value = (double)currentTime.TotalSeconds / (double)totalTime.TotalSeconds;
-                MainWindow.Instance.audioProgress.Content = $"{minCurrent}:{secCurrent} / {minTotal}:{secTotal}";
+                //MainWindow.Instance.audioProgressSlider.Value = valueOfSlider;
+                //MainWindow.Instance.audioProgress.Content = timeStr;
                 //MainWindow.Instance.audioProgress.Content = $"{currentTime.ToString()} / {totalTime.ToString()}";
             });
+        }
+
+        public static string GetFormatedTimeString()
+        {
+            TimeSpan totalTime = wavFileReader.TotalTime;
+            int minTotal = totalTime.Minutes;
+            int secTotal = totalTime.Seconds;
+            TimeSpan currentTime = wavFileReader.CurrentTime;
+            int minCurrent = currentTime.Minutes;
+            int secCurrent = currentTime.Seconds;
+
+            string timeStr = $"{minCurrent}:{secCurrent} / {minTotal}:{secTotal}";
+            return timeStr;
         }
     }
 }

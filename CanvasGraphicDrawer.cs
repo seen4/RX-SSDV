@@ -22,6 +22,8 @@ namespace RX_SSDV
         public int Width => width;
         public int Height => height;
 
+        public Action<int, int> onSizeChange = (w, h) => { };
+
         public CanvasGraphicDrawer(int width, int height, Canvas imageCanvas, Image drawTarget)
         {
             this.drawTarget = drawTarget;
@@ -54,6 +56,8 @@ namespace RX_SSDV
 
             drawTarget.Width = width;
             drawTarget.Height = height;
+
+            onSizeChange(width, height);
 
             if(width > 0 && height > 0)
                 InitGraphics();
