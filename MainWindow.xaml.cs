@@ -152,10 +152,10 @@ namespace RX_SSDV
             }
         }
 
-        private void applyFilterBtn_Click(object sender, RoutedEventArgs e)
-        {
-            if (mainDSP != null)
-                mainDSP.UpdateFilter();
-        }
+        //private void applyFilterBtn_Click(object sender, RoutedEventArgs e)
+        //{
+        //    if (mainDSP != null)
+        //        mainDSP.UpdateFilter();
+        //}
     }
 }

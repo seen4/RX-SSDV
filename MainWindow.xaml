@@ -50,7 +50,7 @@
                                         <Label Content="Freq Shift"/>
                                         <TextBox Name="freqShiftInput" TextChanged="freqShiftInput_TextChanged" Margin="80,0,5,0" Text="0"/>
                                     </Grid>
-                                    <Button Name="applyFilterBtn" Click="applyFilterBtn_Click" Width="70" Height="20" Content="Apply" FontSize="12" Margin="0,30,0,0"/>
+                                    <!--<Button Name="applyFilterBtn" Click="applyFilterBtn_Click" Width="70" Height="20" Content="Apply" FontSize="12" Margin="0,30,0,0"/>-->
                                 </StackPanel>
                             </GroupBox>
                         </Grid>
