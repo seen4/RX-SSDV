@@ -34,7 +34,7 @@ namespace RX_SSDV
         //public const int FFT_MAX = 120;
         //public const int FFT_MIN = 0;
         public const int FFT_POS = 100;
-        public const int FFT_RANGE = 2048;
+        public const int FFT_RANGE = -1;//2048
         public const int SPECTRUM_UPDATE_RATE = 50;
         public List<double[]> fftDataset = new List<double[]>();
         public Bitmap spectrumCacheBitmap;
@@ -221,7 +221,7 @@ namespace RX_SSDV
 
                 //Analyze
                 graphics.DrawString(
-                    $"FFT[{FFT_SIZE}]( {(FFT_RANGE < 0 ? "" : "Visualizing index range: 0 - " + FFT_RANGE)} Freq: -{maxFreq / 2000}kHz - {maxFreq / 2000}kHz )" +
+                    $"FFT[{FFT_SIZE}](Visualizing index range: {(FFT_RANGE < 0 ? "Unlimited" : " 0 - " + FFT_RANGE)} Freq: -{maxFreq / 2000}kHz - {maxFreq / 2000}kHz )" +
                     $"\nInput Signal[Real {lengthReal}, Imag {lengthImag}]" +
                     $"\nOutput FFT[{magnitudeSpectrum.Length}]" +
                     $"\nBandwidth: {bandwidth}kHz, Frequency Shift: {frequencyShift}kHz" +
