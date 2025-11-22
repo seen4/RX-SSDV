@@ -36,10 +36,6 @@ namespace RX_SSDV
         public const int FFT_POS = 100;
         public const int FFT_RANGE = 2048;
         public const int SPECTRUM_UPDATE_RATE = 50;
-        float[] realPositive;
-        float[] imagPositive;
-        float[] realNegative;
-        float[] imagNegative;
         public List<double[]> fftDataset = new List<double[]>();
         public Bitmap spectrumCacheBitmap;
         private float freqPerSample = 0;
@@ -56,10 +52,6 @@ namespace RX_SSDV
             spectrum = spectrumArea;
 
             int spectrumLength = SampleSource.WAV_BUFFER_SIZE;
-            realPositive = new float[spectrumLength];
-            imagPositive = new float[spectrumLength];
-            realNegative = new float[spectrumLength];
-            imagNegative = new float[spectrumLength];
 
             Init();
         }
@@ -99,6 +91,7 @@ namespace RX_SSDV
         public void ProcessData(float[] samplesReal, float[] samplesImag)
         {
             ProcessSpectrum(samplesReal, samplesImag);
+            ProcessFilter(samplesReal, samplesImag);
         }
 
         public void OnSourceChange(WaveFormat waveFormat)
@@ -146,8 +139,8 @@ namespace RX_SSDV
 
                     fft.Direct(realSignal, imagSignal);
 
-                    double[] tempSpectrum = realPositive
-                        .Select((v, i) => Math.Sqrt(v * v + imagPositive[i] * imagPositive[i]))
+                    double[] tempSpectrum = realSignal
+                        .Select((v, i) => Math.Sqrt(v * v + imagSignal[i] * imagSignal[i]))
                         .ToArray();
 
                     magnitudeSpectrum = new double[realSignal.Length];
