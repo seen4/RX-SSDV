@@ -28,9 +28,9 @@ namespace RX_SSDV
         private SolidBrush bfBrush = new SolidBrush(Color.FromArgb(120, 0, 255, 255));
 
         /*FFT Spectrum*/
-        public FftFull fft;
+        public Fft fft;
         //public Fft fft;
-        public const int FFT_SIZE = 1024;
+        public const int FFT_SIZE = 2048;
         //public const int FFT_MAX = 120;
         //public const int FFT_MIN = 0;
         public const int FFT_POS = 100;
@@ -67,7 +67,7 @@ namespace RX_SSDV
         private void Init()
         {
             //rFft = new RealFft(FFT_SIZE);
-            fft = new FftFull(FFT_SIZE);
+            fft = new Fft(FFT_SIZE);
             //UpdateFilter();
             UpdateBitmap(spectrum.Width);
 
@@ -96,18 +96,6 @@ namespace RX_SSDV
             }
         }
 
-        private void UpdateFFTBuffer(float[] realSignal, float[] imagSignal)
-        {
-            Array.Clear(realPositive, 0, realPositive.Length);
-            Array.Clear(imagPositive, 0, imagPositive.Length);
-            Array.Clear(realNegative, 0, realNegative.Length);
-            Array.Clear(imagNegative, 0, imagNegative.Length);
-            realSignal.FastCopyTo(realPositive, realSignal.Length);
-            imagSignal.FastCopyTo(imagPositive, imagSignal.Length);
-            realSignal.FastCopyTo(realNegative, realSignal.Length);
-            imagSignal.FastCopyTo(imagNegative, imagSignal.Length);
-        }
-
         public void ProcessData(float[] samplesReal, float[] samplesImag)
         {
             ProcessSpectrum(samplesReal, samplesImag);
@@ -119,6 +107,31 @@ namespace RX_SSDV
             sampleRate = waveFormat.SampleRate;
         }
 
+        public void ProcessFilter(float[] realSignal, float[] imagSignal)
+        {
+            DiscreteSignal filterInputSignal;
+            DiscreteSignal filteredSignal = null;
+
+            if (bandPassFilter != null)
+            {
+                filterInputSignal = new DiscreteSignal(sampleRate, realSignal);
+                filteredSignal = bandPassFilter.FilterOnline(filterInputSignal);
+            }
+
+            //Drawing
+            //if (filteredSignal != null)
+            //{
+            //    pointsOfFilter = filteredSignal.Samples
+            //        .Select((v, i) => new Point((int)(i * (spectrum.Width * 1f / filteredSignal.Samples.Length)), spectrum.Height - (int)(v * 100) - FFT_POS - 300))
+            //        .ToArray();
+            //}
+
+            //if (filteredSignal != null)
+            //{
+            //    graphics.DrawLines(Pens.Black, pointsOfFilter);
+            //}
+        }
+
         public void ProcessSpectrum(float[] realSignal, float[] imagSignal)
         {
             currentSpectrumTick++;
@@ -127,135 +140,128 @@ namespace RX_SSDV
             {
                 //FFT
                 currentSpectrumTick = 0;
-                if ((realSignal.Length > 0 && realSignal.Length > FFT_SIZE) && (realSignal.Length == imagSignal.Length))
+                if ((realSignal.Length > 0 && realSignal.Length >= FFT_SIZE) && (realSignal.Length == imagSignal.Length))
                 {
                     float maxFreq = realSignal.Length * freqPerSample;
 
-                    UpdateFFTBuffer(realSignal, imagSignal);
+                    fft.Direct(realSignal, imagSignal);
 
-                    DiscreteSignal filterInputSignal;
-                    DiscreteSignal filteredSignal = null;
+                    double[] tempSpectrum = realPositive
+                        .Select((v, i) => Math.Sqrt(v * v + imagPositive[i] * imagPositive[i]))
+                        .ToArray();
 
-                    if (bandPassFilter != null)
+                    magnitudeSpectrum = new double[realSignal.Length];
+
+                    for (int i = 0, j = tempSpectrum.Length / 2; i < magnitudeSpectrum.Length; i++, j++)
                     {
-                        filterInputSignal = new DiscreteSignal(sampleRate, realSignal);
-                        filteredSignal = bandPassFilter.FilterOnline(filterInputSignal);
-                    }
-
-                    fft.Direct(realPositive, imagPositive);
-                    fft.DirectNegative(realNegative, imagNegative);
-
-                    magnitudeSpectrum = new double[realSignal.Length * 2];
-                    for (int i = 0; i < realNegative.Length; i++)
-                    {
-                        double real = realNegative[i];
-                        double imag = imagNegative[i];
-                        magnitudeSpectrum[i] = Math.Sqrt(real * real + imag * imag);
-                    }
-                    for (int i = 0; i < realPositive.Length; i++)
-                    {
-                        double real = realPositive[i];
-                        double imag = imagPositive[i];
-                        magnitudeSpectrum[i + realNegative.Length / 2] = Math.Sqrt(real * real + imag * imag);
-                    }
-
-                    //double[] magnitudeSpectrum = realSignal.Select((v, i) => Math.Sqrt(v * v + imagSignal[i] * imagSignal[i])).ToArray();
-                    //fft.Direct(inputSignal[0..Math.Min(FFT_SIZE, inputSignal.Length)], fftIm);
-                    //double[] result = fftIm.Select((v, i) => Math.Sqrt(v * v + inputSignal[i] * inputSignal[i])).ToArray();
-                    double[] actualProcess = magnitudeSpectrum[0..FFT_RANGE];
-                    if (fftDataset.Count - 1 >= FFT_POS)
-                    {
-                        fftDataset.RemoveAt(0);
-                    }
-                    fftDataset.Add(actualProcess);
-
-                    points = actualProcess
-                        .Select((v, i) => new Point((int)(i * ((float)spectrum.Width / actualProcess.Length)), spectrum.Height - (int)(v * 2) - FFT_POS))
-                        .ToArray();   // 将数据转换为一个个的坐标点
-
-                    if (filteredSignal != null)
-                    {
-                        pointsOfFilter = filteredSignal.Samples
-                            .Select((v, i) => new Point((int)(i * (spectrum.Width * 0.1f / filteredSignal.Samples.Length)) + 300, spectrum.Height / 10 - (int)(v * 2) - FFT_POS))
-                            .ToArray();
-                    }
-
-                    spectrum.Draw((graphics) =>
-                    {
-                        float samplesPerKHz = (1000 / freqPerSample);
-                        float pixelsPerSample = ((float)spectrum.Width / actualProcess.Length);
-                        float scaleCoeff = samplesPerKHz * pixelsPerSample;
-                        int centerPos = spectrum.Width / 2;
-
-                        //Spectrum
-                        graphics.DrawLines(Pens.Black, points);   // 连接这些点, 画线
-                        if (filteredSignal != null)
+                        if (j > tempSpectrum.Length - 1)
                         {
-                            graphics.DrawLines(Pens.Black, pointsOfFilter);
+                            j = 0;
                         }
 
-                        //Band-pass filter
-                        int bpMin = frequencyShift - bandwidth / 2;
-                        int bpMax = frequencyShift + bandwidth / 2;
+                        magnitudeSpectrum[i] = tempSpectrum[j];
+                    }
 
-                        graphics.DrawLine(Pens.LightCyan, new Point(centerPos + (int)(bpMin * scaleCoeff), 0), new Point(centerPos + (int)(bpMin * scaleCoeff), spectrum.Height - FFT_POS));
-                        graphics.DrawLine(Pens.LightCyan, new Point(centerPos + (int)(bpMax * scaleCoeff), 0), new Point(centerPos + (int)(bpMax * scaleCoeff), spectrum.Height - FFT_POS));
-                        graphics.FillRectangle(bfBrush, centerPos + (int)(bpMin * scaleCoeff), 0, (bpMax - bpMin) * scaleCoeff, spectrum.Height - FFT_POS);
-
-                        //Analyze
-                        graphics.DrawString(
-                            $"FFT[{FFT_SIZE}](Visualizing index range: 0 - {FFT_RANGE} Freq: -{maxFreq / 2000}kHz - {maxFreq / 2000}kHz)" +
-                            $"\nInput Signal[Real {realSignal.Length}, Imag {imagSignal.Length}]" +
-                            $"\nOutput FFT[{magnitudeSpectrum.Length}]" +
-                            $"\nBandwidth: {bandwidth}kHz, Frequency Shift: {frequencyShift}kHz" +
-                            $"\nTime {SampleSource.GetFormatedTimeString()}",
-                            font, brush, new Point(5, 5));
-
-                        //Separator
-                        graphics.DrawLine(Pens.Black, new Point(0, spectrum.Height - FFT_POS), new Point(spectrum.Width, spectrum.Height - FFT_POS));
-
-                        //Waterfall
-                        for (int i = 0; i < fftDataset.Count; i++)
-                        {
-                            double[] data = fftDataset[^(i + 1)];
-                            int lastX = -1;
-                            for (int j = 0; j < data.Length; j++)
-                            {
-                                int x = (int)(j * pixelsPerSample);
-                                if (x != lastX)
-                                {
-                                    if (x > lastX + 1)
-                                    {
-                                        x = lastX + 1;
-                                    }
-                                    int value = (int)Math.Clamp(data[j] * 5, 0, 255);
-                                    spectrumCacheBitmap.SetPixel(x, 0, Color.FromArgb(value, 0, 255 / 4));
-                                    lastX = x;
-                                }
-                            }
-                            graphics.DrawImage(spectrumCacheBitmap, 0, spectrum.Height - (FFT_POS - 20) + i, spectrum.Width, 1);
-                        }
-
-                        //Scale
-                        for (int i = 0; i < actualProcess.Length / 2; i += 100)
-                        {
-                            if (i < actualProcess.Length - 1)
-                            {
-                                int xPos = (int)(i * ((float)spectrum.Width / actualProcess.Length));
-
-                                graphics.DrawLine(Pens.Black, new Point(centerPos + xPos, spectrum.Height - FFT_POS + 5), new Point(centerPos + xPos, spectrum.Height - FFT_POS));
-                                graphics.DrawString($"{(i * freqPerSample) / 1000}kHz", font, brush, new Point(centerPos + xPos, spectrum.Height - FFT_POS + 5));
-
-                                if (i != 0)
-                                {
-                                    graphics.DrawLine(Pens.Black, new Point(centerPos - xPos, spectrum.Height - FFT_POS + 5), new Point(centerPos - xPos, spectrum.Height - FFT_POS));
-                                    graphics.DrawString($"-{(i * freqPerSample) / 1000}kHz", font, brush, new Point(centerPos - xPos, spectrum.Height - FFT_POS + 5));
-                                }
-                            }
-                        }
-                    });
+                    UpdateSpectrum(maxFreq, realSignal.Length, imagSignal.Length);
                 }
             }
+        }
+
+        private void UpdateSpectrum(float maxFreq, int lengthReal, int lengthImag)
+        {
+            double[] actualProcess;
+
+            //FFT_RANGE < 0 means no range select.(Debug)
+            if (FFT_RANGE > 0)
+            {
+                actualProcess = magnitudeSpectrum[0..FFT_RANGE];
+            }
+            else
+            {
+                actualProcess = magnitudeSpectrum;
+            }
+
+            if (fftDataset.Count - 1 >= FFT_POS)
+            {
+                fftDataset.RemoveAt(0);
+            }
+
+            fftDataset.Add(actualProcess);
+
+            points = actualProcess
+                .Select((v, i) => new Point((int)(i * ((float)spectrum.Width / actualProcess.Length)), spectrum.Height - (int)(v * 2) - FFT_POS))
+                .ToArray();   // 将数据转换为一个个的坐标点
+
+            spectrum.Draw((graphics) =>
+            {
+                float samplesPerKHz = (1000 / freqPerSample);
+                float pixelsPerSample = ((float)spectrum.Width / actualProcess.Length);
+                float scaleCoeff = samplesPerKHz * pixelsPerSample;
+                int centerPos = spectrum.Width / 2;
+
+                //Spectrum
+                graphics.DrawLines(Pens.Black, points);   // 连接这些点, 画线
+
+                //Band-pass filter
+                int bpMin = frequencyShift - bandwidth / 2;
+                int bpMax = frequencyShift + bandwidth / 2;
+
+                graphics.DrawLine(Pens.LightCyan, new Point(centerPos + (int)(bpMin * scaleCoeff), 0), new Point(centerPos + (int)(bpMin * scaleCoeff), spectrum.Height - FFT_POS));
+                graphics.DrawLine(Pens.LightCyan, new Point(centerPos + (int)(bpMax * scaleCoeff), 0), new Point(centerPos + (int)(bpMax * scaleCoeff), spectrum.Height - FFT_POS));
+                graphics.FillRectangle(bfBrush, centerPos + (int)(bpMin * scaleCoeff), 0, (bpMax - bpMin) * scaleCoeff, spectrum.Height - FFT_POS);
+
+                //Analyze
+                graphics.DrawString(
+                    $"FFT[{FFT_SIZE}]( {(FFT_RANGE < 0 ? "" : "Visualizing index range: 0 - " + FFT_RANGE)} Freq: -{maxFreq / 2000}kHz - {maxFreq / 2000}kHz )" +
+                    $"\nInput Signal[Real {lengthReal}, Imag {lengthImag}]" +
+                    $"\nOutput FFT[{magnitudeSpectrum.Length}]" +
+                    $"\nBandwidth: {bandwidth}kHz, Frequency Shift: {frequencyShift}kHz" +
+                    $"\nTime {SampleSource.GetFormatedTimeString()}",
+                    font, brush, new Point(5, 5));
+
+                //Separator
+                graphics.DrawLine(Pens.Black, new Point(0, spectrum.Height - FFT_POS), new Point(spectrum.Width, spectrum.Height - FFT_POS));
+
+                //Waterfall
+                for (int i = 0; i < fftDataset.Count; i++)
+                {
+                    double[] data = fftDataset[^(i + 1)];
+                    int lastX = -1;
+                    for (int j = 0; j < data.Length; j++)
+                    {
+                        int x = (int)(j * pixelsPerSample);
+                        if (x != lastX)
+                        {
+                            if (x > lastX + 1)
+                            {
+                                x = lastX + 1;
+                            }
+                            int value = (int)Math.Clamp(data[j] * 20, 0, 255);
+                            spectrumCacheBitmap.SetPixel(x, 0, Color.FromArgb(value, 0, 255 / 4));
+                            lastX = x;
+                        }
+                    }
+                    graphics.DrawImage(spectrumCacheBitmap, 0, spectrum.Height - (FFT_POS - 20) + i, spectrum.Width, 1);
+                }
+
+                //Scale
+                for (int i = 0; i < actualProcess.Length / 2; i += 100)
+                {
+                    if (i < actualProcess.Length - 1)
+                    {
+                        int xPos = (int)(i * ((float)spectrum.Width / actualProcess.Length));
+
+                        graphics.DrawLine(Pens.Black, new Point(centerPos + xPos, spectrum.Height - FFT_POS + 5), new Point(centerPos + xPos, spectrum.Height - FFT_POS));
+                        graphics.DrawString($"{(i * freqPerSample) / 1000}kHz", font, brush, new Point(centerPos + xPos, spectrum.Height - FFT_POS + 5));
+
+                        if (i != 0)
+                        {
+                            graphics.DrawLine(Pens.Black, new Point(centerPos - xPos, spectrum.Height - FFT_POS + 5), new Point(centerPos - xPos, spectrum.Height - FFT_POS));
+                            graphics.DrawString($"-{(i * freqPerSample) / 1000}kHz", font, brush, new Point(centerPos - xPos, spectrum.Height - FFT_POS + 5));
+                        }
+                    }
+                }
+            });
         }
     }
 }
