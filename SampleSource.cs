@@ -2,6 +2,7 @@
 using NWaves.Effects.Stereo;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -21,20 +22,50 @@ namespace RX_SSDV
         public static DataSourceType sourceType = DataSourceType.BasebandFile;
         public static bool audioPathEdited = false;
         public static string audioFilePath = "";
+        public static bool IsSourceAvalible => isSourceAvalible;
 
         private static WaveFileReader wavFileReader;
         private static SampleAggregator sampleAggregator;
 
-        private static WaveOutEvent waveOutEvent = new WaveOutEvent();
+        //private static WaveOutEvent waveOutEvent = new WaveOutEvent();
         private static IWavePlayer playbackDevice;
 
         private static bool directRead = false;
         private static bool directReadPause = false;
 
+        private static bool isSourceAvalible = false;
+
         public const int WAV_BUFFER_SIZE = 2048;
 
         public static Action<float[], float[]> onDataAvalible = (samplesReal, samplesImag) => { /*UpdateUI();*/ };
         public static Action<WaveFormat> onSourceChange = (waveFmt) => { };
+
+        public static void Play()
+        {
+            bool isPathAvalible = CheckPathAvalible(true);
+            if (!isPathAvalible)
+            {
+                return;
+            }
+
+            isSourceAvalible = true;
+
+            ReadSampleDirect();
+            //PlayAudio();
+        }
+
+        public static void Pause()
+        {
+            PauseDirectRead();
+            //PauseAudio();
+        }
+
+        public static void Stop()
+        {
+            StopDirectRead();
+            isSourceAvalible = false;
+            //StopAudio();
+        }
 
         public static void ReadSampleDirect()
         {
@@ -56,11 +87,6 @@ namespace RX_SSDV
                         {
                             Array.Clear(buffer, 0, bufferSize);
                             sampleAggregator.Read(buffer, 0, bufferSize);
-                            //offset += bufferSize;
-                            //onDataAvalible(buffer);
-
-                            //没那么快
-                            //Thread.Sleep((int)((float)bufferSize / (float)sampleRate * 1000f));
                         }
                         else
                         {
@@ -85,6 +111,7 @@ namespace RX_SSDV
         public static void StopDirectRead()
         {
             directRead = false;
+            directReadPause = false;
         }
 
         public static void InitSource()
@@ -94,15 +121,31 @@ namespace RX_SSDV
             sampleAggregator.processSamples += onDataAvalible;
         }
 
-        public static void PlayAudio()
+        private static void EnsureDeviceCreated()
+        {
+            if (playbackDevice == null)
+            {
+                CreateDevice();
+            }
+        }
+
+        private static void CreateDevice()
+        {
+            playbackDevice = new WaveOut { DesiredLatency = 200 };
+        }
+
+        public static bool CheckPathAvalible(bool showMessage = false)
         {
             bool isPathAvalible = File.Exists(audioFilePath);
-            if(!isPathAvalible)
+            if (!isPathAvalible && showMessage)
             {
                 MessageBox.Show("File not exist.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
             }
+            return isPathAvalible;
+        }
 
+        public static void PlayAudio()
+        {
             EnsureDeviceCreated();
 
             if (audioPathEdited)
@@ -120,18 +163,7 @@ namespace RX_SSDV
             onSourceChange(sampleAggregator.WaveFormat);
         }
 
-        private static void EnsureDeviceCreated()
-        {
-            if(playbackDevice == null)
-            {
-                CreateDevice();
-            }
-        }
 
-        private static void CreateDevice()
-        {
-            playbackDevice = new WaveOut { DesiredLatency = 200 };
-        }
 
         public static void PauseAudio()
         {

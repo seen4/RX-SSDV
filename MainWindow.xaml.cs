@@ -100,20 +100,17 @@ namespace RX_SSDV
 
         private void playAudioBtn_Click(object sender, RoutedEventArgs e)
         {
-            SampleSource.ReadSampleDirect();
-            //SampleSource.PlayAudio();
+            SampleSource.Play();
         }
 
         private void pauseAudioBtn_Click(object sender, RoutedEventArgs e)
         {
-            SampleSource.PauseDirectRead();
-            //SampleSource.PauseAudio();
+            SampleSource.Pause();
         }
 
         private void stopAudioBtn_Click(object sender, RoutedEventArgs e)
         {
-            SampleSource.StopDirectRead();
-            //SampleSource.StopAudio();
+            SampleSource.Stop();
         }
 
         private void bandWidthInput_TextChanged(object sender, TextChangedEventArgs e)
@@ -125,8 +122,11 @@ namespace RX_SSDV
                     bandwidth = 1;
 
                 bandWidthInput.Text = $"{bandwidth}";
-                if(mainDSP != null)
+                if (mainDSP != null)
+                {
                     mainDSP.bandwidth = bandwidth;
+                    mainDSP.UpdateFilter();
+                }
             }
             else
             {
@@ -141,7 +141,10 @@ namespace RX_SSDV
             {
                 freqShiftInput.Text = $"{freqShift}";
                 if (mainDSP != null)
+                {
                     mainDSP.frequencyShift = freqShift;
+                    mainDSP.UpdateFilter();
+                }
             }
             else
             {

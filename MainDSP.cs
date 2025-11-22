@@ -75,16 +75,32 @@ namespace RX_SSDV
 
         public void UpdateFilter()
         {
-            try
+            if (frequencyShift - bandwidth / 2f > 0 && SampleSource.IsSourceAvalible)
             {
-                double lowCutoff = (frequencyShift - bandwidth / 2.0) * 1000 / sampleRate;
-                double highCutoff = (frequencyShift + bandwidth / 2.0) * 1000 / sampleRate;
-                double[] bpKernel = DesignFilter.FirWinBp(237, lowCutoff, highCutoff);
-                bandPassFilter = new FirFilter(bpKernel);
-            }
-            catch(Exception e)
-            {
-                MessageBox.Show("Bandpass filter got a really really bad argument.", "Oh no!", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                try
+                {
+                    double lowCutoff = (frequencyShift - bandwidth / 2.0) * 1000 / sampleRate;
+                    double highCutoff = (frequencyShift + bandwidth / 2.0) * 1000 / sampleRate;
+                    double[] bpKernel = DesignFilter.FirWinBp(237, lowCutoff, highCutoff);
+                    if (bandPassFilter == null)
+                    {
+                        bandPassFilter = new FirFilter(bpKernel);
+                    }
+                    else
+                    {
+                        //Well... Is this necessary?
+                        float[] bpFloatKernel = new float[bpKernel.Length];
+                        for (int i = 0; i < bpKernel.Length; i++)
+                        {
+                            bpFloatKernel[i] = (float)bpKernel[i];
+                        }
+                        bandPassFilter.ChangeKernel(bpFloatKernel);
+                    }
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show("Unexpected bad filter arguments.", "Oh no!", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                }
             }
         }
 
