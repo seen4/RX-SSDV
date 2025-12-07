@@ -11,6 +11,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 using MessageBox = System.Windows.MessageBox;
+using RX_SSDV.Utils;
 
 namespace RX_SSDV
 {
@@ -22,7 +23,8 @@ namespace RX_SSDV
         /*Drawing*/
         private CanvasGraphicDrawer spectrum;
         private Point[] points;
-        private Point[] pointsOfFilter;
+        private Point[] pointsOfFilterI;
+        private Point[] pointsOfFilterQ;
         private Font font = new Font("Arial", 8);
         private SolidBrush brush = new SolidBrush(Color.Black);
         private SolidBrush bfBrush = new SolidBrush(Color.FromArgb(120, 0, 255, 255));
@@ -45,7 +47,8 @@ namespace RX_SSDV
         /*Filter*/
         public int bandwidth = 1;
         public int frequencyShift = 0;
-        public FirFilter bandPassFilter;
+        public ComplexFirFilter bpFilter;
+        public const int BP_ORDER = 130;
 
         public MainDSP(CanvasGraphicDrawer spectrumArea)
         {
@@ -81,20 +84,17 @@ namespace RX_SSDV
                 {
                     double lowCutoff = (frequencyShift - bandwidth / 2.0) * 1000 / sampleRate;
                     double highCutoff = (frequencyShift + bandwidth / 2.0) * 1000 / sampleRate;
-                    double[] bpKernel = DesignFilter.FirWinBp(237, lowCutoff, highCutoff);
-                    if (bandPassFilter == null)
+                    double[] bpKernelReal = DesignFilter.FirWinBp(BP_ORDER, lowCutoff, highCutoff);
+                    double[] bpKernelImag = DesignFilterUtil.FirWinBpImag(BP_ORDER, lowCutoff, highCutoff);
+                    if (bpFilter == null)
                     {
-                        bandPassFilter = new FirFilter(bpKernel);
+                        bpFilter = new ComplexFirFilter(bpKernelReal, bpKernelImag);
                     }
                     else
                     {
                         //Well... Is this necessary?
-                        float[] bpFloatKernel = new float[bpKernel.Length];
-                        for (int i = 0; i < bpKernel.Length; i++)
-                        {
-                            bpFloatKernel[i] = (float)bpKernel[i];
-                        }
-                        bandPassFilter.ChangeKernel(bpFloatKernel);
+                        //Yes.
+                        bpFilter.ChangeKernel(bpKernelReal, bpKernelImag);
                     }
                 }
                 catch (Exception e)
@@ -118,27 +118,26 @@ namespace RX_SSDV
 
         public void ProcessFilter(float[] realSignal, float[] imagSignal)
         {
-            DiscreteSignal filterInputSignal;
-            DiscreteSignal filteredSignal = null;
+            float[] outputRealSignal;
+            float[] outputImagSignal;
 
-            if (bandPassFilter != null)
+            if (bpFilter != null)
             {
-                filterInputSignal = new DiscreteSignal(sampleRate, realSignal);
-                filteredSignal = bandPassFilter.FilterOnline(filterInputSignal);
+                (float[], float[]) outputSignal = bpFilter.Process(realSignal, imagSignal);
+                outputRealSignal = outputSignal.Item1;
+                outputImagSignal = outputSignal.Item2;
+
+                //Drawing
+                pointsOfFilterI = outputRealSignal
+                    .Select((v, i) => new Point((int)(i * (spectrum.Width * 1f / outputRealSignal.Length)), spectrum.Height - (int)(v * 100) - FFT_POS - 300))
+                    .ToArray();
+
+                pointsOfFilterQ = outputRealSignal
+                    .Select((v, i) => new Point((int)(i * (spectrum.Width * 1f / outputRealSignal.Length)), spectrum.Height - (int)(v * 100) - FFT_POS - 500))
+                    .ToArray();
+
+                //graphics.DrawLines(Pens.Black, pointsOfFilter);
             }
-
-            //Drawing
-            //if (filteredSignal != null)
-            //{
-            //    pointsOfFilter = filteredSignal.Samples
-            //        .Select((v, i) => new Point((int)(i * (spectrum.Width * 1f / filteredSignal.Samples.Length)), spectrum.Height - (int)(v * 100) - FFT_POS - 300))
-            //        .ToArray();
-            //}
-
-            //if (filteredSignal != null)
-            //{
-            //    graphics.DrawLines(Pens.Black, pointsOfFilter);
-            //}
         }
 
         public void ProcessSpectrum(float[] realSignal, float[] imagSignal)
@@ -269,6 +268,16 @@ namespace RX_SSDV
                             graphics.DrawString($"-{(i * freqPerSample) / 1000}kHz", font, brush, new Point(centerPos - xPos, spectrum.Height - FFT_POS + 5));
                         }
                     }
+                }
+
+                //Debug
+                if(pointsOfFilterI != null)
+                {
+                    graphics.DrawLines(Pens.Black, pointsOfFilterI);
+                }
+                if (pointsOfFilterQ != null)
+                {
+                    graphics.DrawLines(Pens.Black, pointsOfFilterQ);
                 }
             });
         }
