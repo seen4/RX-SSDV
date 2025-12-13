@@ -84,8 +84,8 @@ namespace RX_SSDV
                 {
                     double lowCutoff = (frequencyShift - bandwidth / 2.0) * 1000 / sampleRate;
                     double highCutoff = (frequencyShift + bandwidth / 2.0) * 1000 / sampleRate;
-                    double[] bpKernelReal = DesignFilter.FirWinBp(BP_ORDER, lowCutoff, highCutoff);
-                    double[] bpKernelImag = DesignFilterUtil.FirWinBpImag(BP_ORDER, lowCutoff, highCutoff);
+                    float[] bpKernelReal = ArrayUtil.Double2Float(DesignFilterUtil.FirWinBpReal(BP_ORDER, lowCutoff, highCutoff));
+                    float[] bpKernelImag = ArrayUtil.Double2Float(DesignFilterUtil.FirWinBpImag(BP_ORDER, lowCutoff, highCutoff));
                     if (bpFilter == null)
                     {
                         bpFilter = new ComplexFirFilter(bpKernelReal, bpKernelImag);
@@ -118,14 +118,12 @@ namespace RX_SSDV
 
         public void ProcessFilter(float[] realSignal, float[] imagSignal)
         {
-            float[] outputRealSignal;
-            float[] outputImagSignal;
+            float[] outputRealSignal = new float[realSignal.Length];
+            float[] outputImagSignal = new float[imagSignal.Length];
 
             if (bpFilter != null)
             {
-                (float[], float[]) outputSignal = bpFilter.Process(realSignal, imagSignal);
-                outputRealSignal = outputSignal.Item1;
-                outputImagSignal = outputSignal.Item2;
+                bpFilter.ProcessOnline(realSignal, imagSignal, outputRealSignal, outputRealSignal);
 
                 //Drawing
                 pointsOfFilterI = outputRealSignal
