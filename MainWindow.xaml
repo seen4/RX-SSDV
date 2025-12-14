@@ -12,15 +12,38 @@
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="600*"/>
-                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="250"/>
                     </Grid.ColumnDefinitions>
-                    <Canvas Name="spectrum" Margin="10,10,0,10" Grid.Column ="0" Background="#FFBBBBBB">
-                        <Image Name="spectrumDisplay"/>
-                    </Canvas>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="500*"/>
+                            <RowDefinition Height="130"/>
+                        </Grid.RowDefinitions>
+                        <Canvas Name="spectrum" Margin="10,10,0,10" Grid.Row ="0" Background="#FFBBBBBB">
+                            <Image Name="spectrumDisplay"/>
+                        </Canvas>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Grid.Row="1">
+                            <Canvas Margin="10,0,0,0">
+                                <Label Content="PM" FontSize="10"/>
+                                <Canvas Margin="0,20,0,0" Name="pm" Width="100" Height="100" Grid.Row ="0" Background="#FFBBBBBB">
+                                    <Image Name="pmDisplay"/>
+                                </Canvas>
+                            </Canvas>
+
+                            <Canvas Margin="110,0,0,0">
+                                <Label Content="Constellation" FontSize="10"/>
+                                <Canvas Margin="0,20,0,0" Name="constellation" Width="100" Height="100" Grid.Row ="0" Background="#FFBBBBBB">
+                                    <Image Name="constellationDisplay"/>
+                                </Canvas>
+                            </Canvas>
+                        </StackPanel>
+                    </Grid>
                     <ScrollViewer Grid.Column="1" >
                         <Grid Margin="5,10,5,10">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="220"/>
+                                <RowDefinition Height="120"/>
+                                <RowDefinition Height="120"/>
                                 <RowDefinition Height="200*"/>
                             </Grid.RowDefinitions>
                             <GroupBox Header="Data Source" Grid.Row="0">
@@ -40,17 +63,31 @@
                                     </StackPanel>
                                 </StackPanel>
                             </GroupBox>
-                            <GroupBox Header="Filter" Grid.Row="1">
+                            <GroupBox Header="Display" Grid.Row="1">
                                 <StackPanel Orientation="Vertical">
-                                    <Grid>
+                                    <Grid Margin="0,0,0,0">
+                                        <Label Content="Spectrum Period"/>
+                                        <TextBox Name="spectrumPeriodInput" LostFocus="spectrumPeriodInput_LostFocus" Margin="120,0,5,0" Text="1"/>
+                                    </Grid>
+                                </StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Filter" Grid.Row="2">
+                                <StackPanel Orientation="Vertical">
+                                    <CheckBox Name="enableFilterBox" Click="enableFilterBox_Click" Content="Enable Filter"/>
+                                    <Grid Margin="0,5,0,0">
                                         <Label Content="Bandwidth"/>
-                                        <TextBox Name="bandWidthInput" TextChanged="bandWidthInput_TextChanged" Margin="80,0,5,0" Text="1"/>
+                                        <TextBox Name="bandWidthInput" LostFocus="bandWidthInput_LostFocus" Margin="80,0,5,0" Text="1"/>
                                     </Grid>
                                     <Grid Margin="0,5,0,0">
                                         <Label Content="Freq Shift"/>
-                                        <TextBox Name="freqShiftInput" TextChanged="freqShiftInput_TextChanged" Margin="80,0,5,0" Text="0"/>
+                                        <TextBox Name="freqShiftInput" LostFocus="freqShiftInput_LostFocus" Margin="80,0,5,0" Text="0"/>
                                     </Grid>
                                     <!--<Button Name="applyFilterBtn" Click="applyFilterBtn_Click" Width="70" Height="20" Content="Apply" FontSize="12" Margin="0,30,0,0"/>-->
+                                </StackPanel>
+                            </GroupBox>
+                            <GroupBox Header="Process" Grid.Row="3">
+                                <StackPanel Orientation="Vertical">
+                                    <CheckBox Name="enableProcessorBox" Click="enableProcessorBox_Click" Content="Enable Process"/>
                                 </StackPanel>
                             </GroupBox>
                         </Grid>

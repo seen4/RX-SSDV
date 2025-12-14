@@ -28,6 +28,7 @@ namespace RX_SSDV
         }
 
         public CanvasGraphicDrawer spectrumDrawer;
+        public CanvasGraphicDrawer constellationDrawer;
 
         public Action onSizeChange;
 
@@ -51,12 +52,13 @@ namespace RX_SSDV
 
         private void InitDSP()
         {
-            mainDSP = new MainDSP(spectrumDrawer);
+            mainDSP = new MainDSP(spectrumDrawer, constellationDrawer);
         }
 
         private void InitDrawer()
         {
             spectrumDrawer = new CanvasGraphicDrawer(590, 387, spectrum, spectrumDisplay);
+            constellationDrawer = new CanvasGraphicDrawer(100, 100, constellation, constellationDisplay);
         }
 
 
@@ -113,7 +115,7 @@ namespace RX_SSDV
             SampleSource.Stop();
         }
 
-        private void bandWidthInput_TextChanged(object sender, TextChangedEventArgs e)
+        private void bandWidthInput_LostFocus(object sender, RoutedEventArgs e)
         {
             int bandwidth = 1;
             if(int.TryParse(bandWidthInput.Text, out bandwidth))
@@ -134,7 +136,7 @@ namespace RX_SSDV
             }
         }
 
-        private void freqShiftInput_TextChanged(object sender, TextChangedEventArgs e)
+        private void freqShiftInput_LostFocus(object sender, RoutedEventArgs e)
         {
             int freqShift = 0;
             if (int.TryParse(freqShiftInput.Text, out freqShift))
@@ -149,6 +151,33 @@ namespace RX_SSDV
             else
             {
                 freqShiftInput.Text = "0";
+            }
+        }
+
+        private void enableFilterBox_Click(object sender, RoutedEventArgs e)
+        {
+            mainDSP.EnableFilter = (bool)enableFilterBox.IsChecked;
+        }
+
+        private void enableProcessorBox_Click(object sender, RoutedEventArgs e)
+        {
+            mainDSP.EnableProcess = (bool)enableProcessorBox.IsChecked;
+        }
+
+        private void spectrumPeriodInput_LostFocus(object sender, RoutedEventArgs e)
+        {
+            int period = mainDSP.spectrumPeriod;
+            if (int.TryParse(spectrumPeriodInput.Text, out period))
+            {
+                spectrumPeriodInput.Text = $"{period}";
+                if (mainDSP != null)
+                {
+                    mainDSP.spectrumPeriod = period;
+                }
+            }
+            else
+            {
+                spectrumPeriodInput.Text = mainDSP.spectrumPeriod.ToString();
             }
         }
 

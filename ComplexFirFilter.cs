@@ -82,7 +82,7 @@ namespace NWaves.Filters.Base
         {
             if (kernelI.Count() != kernelQ.Count())
             {
-                throw new ArgumentException("The size of 'kernelI' should equals the size of 'kernelQ'.");
+                throw new ArgumentException("The size of 'kernelI' must equals the size of 'kernelQ'.");
             }
 
             _kernelSize = kernelI.Count();
@@ -166,7 +166,7 @@ namespace NWaves.Filters.Base
 
             for (int n = inputPos, m = outputPos; n < endPos; n++, m++)
             {
-                (outputI[m], outputI[m]) = Process(inputI[n], inputQ[n]);
+                (outputI[m], outputQ[m]) = Process(inputI[n], inputQ[n]);
             }
         }
 

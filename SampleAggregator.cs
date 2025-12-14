@@ -60,7 +60,7 @@ namespace RX_SSDV
 
             for (int n = 0; n < samplesRead; n += channels)
             {
-                AddSample(buffer[n + offset], buffer[n + 1 + offset]);
+                AddSample(buffer[n + offset], buffer[n + channels - 1 + offset]);
             }
             return samplesRead;
         }

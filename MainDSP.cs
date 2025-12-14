@@ -22,6 +22,7 @@ namespace RX_SSDV
 
         /*Drawing*/
         private CanvasGraphicDrawer spectrum;
+        private CanvasGraphicDrawer constellation;
         private Point[] points;
         private Point[] pointsOfFilterI;
         private Point[] pointsOfFilterQ;
@@ -37,7 +38,7 @@ namespace RX_SSDV
         //public const int FFT_MIN = 0;
         public const int FFT_POS = 100;
         public const int FFT_RANGE = -1;//2048
-        public const int SPECTRUM_UPDATE_RATE = 50;
+        public int spectrumPeriod = 50;
         public List<double[]> fftDataset = new List<double[]>();
         public Bitmap spectrumCacheBitmap;
         private float freqPerSample = 0;
@@ -45,24 +46,61 @@ namespace RX_SSDV
         double[] magnitudeSpectrum;
 
         /*Filter*/
+        public bool EnableFilter
+        {
+            get
+            {
+                return enableFilter;
+            }
+            set
+            {
+                enableFilter = value;
+                if (value)
+                {
+                    UpdateFilter();
+                }
+            }
+        }
+        private bool enableFilter = false;
         public int bandwidth = 1;
         public int frequencyShift = 0;
         public ComplexFirFilter bpFilter;
         public const int BP_ORDER = 130;
+        private float[] filteredSamplesI;
+        private float[] filteredSamplesQ;
 
-        public MainDSP(CanvasGraphicDrawer spectrumArea)
+        /*SSDV Process*/
+        public bool EnableProcess
+        {
+            get
+            {
+                return enableProcess;
+            }
+            set
+            {
+                enableProcess = value;
+            }
+        }
+        private bool enableProcess = false;
+        /*BPSK Demod*/
+        public CostasLoop costasLoop;
+        private int constellationStepsize = 10;
+        private float constellationMultiply = 50;
+
+        public MainDSP(CanvasGraphicDrawer spectrumArea, CanvasGraphicDrawer constellationArea)
         {
             spectrum = spectrumArea;
+            constellation = constellationArea;
 
-            int spectrumLength = SampleSource.WAV_BUFFER_SIZE;
+            //int spectrumLength = SampleSource.WAV_BUFFER_SIZE;
 
             Init();
         }
 
         private void Init()
         {
-            //rFft = new RealFft(FFT_SIZE);
             fft = new Fft(FFT_SIZE);
+            costasLoop = new CostasLoop(62.8f, 1000);
             //UpdateFilter();
             UpdateBitmap(spectrum.Width);
 
@@ -78,36 +116,52 @@ namespace RX_SSDV
 
         public void UpdateFilter()
         {
-            if (frequencyShift - bandwidth / 2f > 0 && SampleSource.IsSourceAvalible)
+            if (!enableFilter)
+                return;
+
+            if (SampleSource.IsSourceAvalible)
             {
                 try
                 {
+                    //Calc kernel
                     double lowCutoff = (frequencyShift - bandwidth / 2.0) * 1000 / sampleRate;
                     double highCutoff = (frequencyShift + bandwidth / 2.0) * 1000 / sampleRate;
                     float[] bpKernelReal = ArrayUtil.Double2Float(DesignFilterUtil.FirWinBpReal(BP_ORDER, lowCutoff, highCutoff));
                     float[] bpKernelImag = ArrayUtil.Double2Float(DesignFilterUtil.FirWinBpImag(BP_ORDER, lowCutoff, highCutoff));
+
+                    //Apply the kernel
                     if (bpFilter == null)
                     {
                         bpFilter = new ComplexFirFilter(bpKernelReal, bpKernelImag);
                     }
                     else
                     {
-                        //Well... Is this necessary?
-                        //Yes.
                         bpFilter.ChangeKernel(bpKernelReal, bpKernelImag);
                     }
                 }
                 catch (Exception e)
                 {
-                    MessageBox.Show("Unexpected bad filter arguments.", "Oh no!", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                    MessageBox.Show("Unexpected filter arguments.", "Oh no!", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
                 }
             }
         }
 
         public void ProcessData(float[] samplesReal, float[] samplesImag)
         {
-            ProcessSpectrum(samplesReal, samplesImag);
-            ProcessFilter(samplesReal, samplesImag);
+            currentSpectrumTick++;
+            if (currentSpectrumTick >= spectrumPeriod)
+            {
+                currentSpectrumTick = 0;
+                ProcessSpectrum(samplesReal, samplesImag);
+            }
+
+            filteredSamplesI = samplesReal;
+            filteredSamplesQ = samplesImag;
+            if(enableFilter)
+                ProcessFilter(samplesReal, samplesImag);
+
+            if(enableProcess)
+                ProcessCostas(filteredSamplesI, filteredSamplesQ);
         }
 
         public void OnSourceChange(WaveFormat waveFormat)
@@ -116,22 +170,31 @@ namespace RX_SSDV
             sampleRate = waveFormat.SampleRate;
         }
 
+        public void ProcessCostas(float[] realSignal, float[] imagSignal)
+        {
+            float[] outRealSignal = new float[realSignal.Length];
+            float[] outImagSignal = new float[imagSignal.Length];
+            costasLoop.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
+
+            UpdateConstellation(outRealSignal, outImagSignal);
+        }
+
         public void ProcessFilter(float[] realSignal, float[] imagSignal)
         {
-            float[] outputRealSignal = new float[realSignal.Length];
-            float[] outputImagSignal = new float[imagSignal.Length];
+            filteredSamplesI = new float[realSignal.Length];
+            filteredSamplesQ = new float[imagSignal.Length];
 
             if (bpFilter != null)
             {
-                bpFilter.ProcessOnline(realSignal, imagSignal, outputRealSignal, outputRealSignal);
+                bpFilter.ProcessOnline(realSignal, imagSignal, filteredSamplesI, filteredSamplesQ);
 
                 //Drawing
-                pointsOfFilterI = outputRealSignal
-                    .Select((v, i) => new Point((int)(i * (spectrum.Width * 1f / outputRealSignal.Length)), spectrum.Height - (int)(v * 100) - FFT_POS - 300))
+                pointsOfFilterI = filteredSamplesI
+                    .Select((v, i) => new Point((int)(i * (spectrum.Width * 1f / filteredSamplesI.Length)), spectrum.Height - (int)(v * 100) - FFT_POS - 300))
                     .ToArray();
 
-                pointsOfFilterQ = outputRealSignal
-                    .Select((v, i) => new Point((int)(i * (spectrum.Width * 1f / outputRealSignal.Length)), spectrum.Height - (int)(v * 100) - FFT_POS - 500))
+                pointsOfFilterQ = filteredSamplesQ
+                    .Select((v, i) => new Point((int)(i * (spectrum.Width * 1f / filteredSamplesQ.Length)), spectrum.Height - (int)(v * 100) - FFT_POS - 400))
                     .ToArray();
 
                 //graphics.DrawLines(Pens.Black, pointsOfFilter);
@@ -140,37 +203,53 @@ namespace RX_SSDV
 
         public void ProcessSpectrum(float[] realSignal, float[] imagSignal)
         {
-            currentSpectrumTick++;
 
-            if (currentSpectrumTick >= SPECTRUM_UPDATE_RATE)
+            //FFT
+            if ((realSignal.Length > 0 && realSignal.Length >= FFT_SIZE) && (realSignal.Length == imagSignal.Length))
             {
-                //FFT
-                currentSpectrumTick = 0;
-                if ((realSignal.Length > 0 && realSignal.Length >= FFT_SIZE) && (realSignal.Length == imagSignal.Length))
+                float maxFreq = realSignal.Length * freqPerSample;
+
+                fft.Direct(realSignal, imagSignal);
+
+                double[] tempSpectrum = realSignal
+                    .Select((v, i) => Math.Sqrt(v * v + imagSignal[i] * imagSignal[i]))
+                    .ToArray();
+
+                magnitudeSpectrum = new double[realSignal.Length];
+
+                for (int i = 0, j = tempSpectrum.Length / 2; i < magnitudeSpectrum.Length; i++, j++)
                 {
-                    float maxFreq = realSignal.Length * freqPerSample;
-
-                    fft.Direct(realSignal, imagSignal);
-
-                    double[] tempSpectrum = realSignal
-                        .Select((v, i) => Math.Sqrt(v * v + imagSignal[i] * imagSignal[i]))
-                        .ToArray();
-
-                    magnitudeSpectrum = new double[realSignal.Length];
-
-                    for (int i = 0, j = tempSpectrum.Length / 2; i < magnitudeSpectrum.Length; i++, j++)
+                    if (j > tempSpectrum.Length - 1)
                     {
-                        if (j > tempSpectrum.Length - 1)
-                        {
-                            j = 0;
-                        }
-
-                        magnitudeSpectrum[i] = tempSpectrum[j];
+                        j = 0;
                     }
 
-                    UpdateSpectrum(maxFreq, realSignal.Length, imagSignal.Length);
+                    magnitudeSpectrum[i] = tempSpectrum[j];
                 }
+
+                UpdateSpectrum(maxFreq, realSignal.Length, imagSignal.Length);
             }
+        }
+
+        private void UpdateConstellation(float[] samplesReal, float[] samplesImag)
+        {
+            if (samplesReal.Length != samplesImag.Length)
+                return;
+
+            Point[] points = new Point[samplesReal.Length];
+            for(int i = 0; i < samplesReal.Length; i+=constellationStepsize)
+            {
+                if (i >= samplesReal.Length)
+                    continue;
+                points[i] = new Point((int)(samplesReal[i] * constellationMultiply), (int)(samplesImag[i] * constellationMultiply));
+            }
+
+            constellation.Draw((graphics) => {
+                for (int i = 0; i < points.Length; i++)
+                {
+                    graphics.DrawRectangle(Pens.Green, points[i].X + 50, points[i].Y + 50, 1, 1);
+                }
+            });
         }
 
         private void UpdateSpectrum(float maxFreq, int lengthReal, int lengthImag)
@@ -222,7 +301,8 @@ namespace RX_SSDV
                     $"\nInput Signal[Real {lengthReal}, Imag {lengthImag}]" +
                     $"\nOutput FFT[{magnitudeSpectrum.Length}]" +
                     $"\nBandwidth: {bandwidth}kHz, Frequency Shift: {frequencyShift}kHz" +
-                    $"\nTime {SampleSource.GetFormatedTimeString()}",
+                    $"\nTime {SampleSource.GetFormatedTimeString()}" +
+                    $"\nCostas Loop [freq = {costasLoop.Phase}, phase = {costasLoop.Phase}]",
                     font, brush, new Point(5, 5));
 
                 //Separator
