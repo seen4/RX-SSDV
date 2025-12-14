@@ -88,6 +88,10 @@
                             <GroupBox Header="Process" Grid.Row="3">
                                 <StackPanel Orientation="Vertical">
                                     <CheckBox Name="enableProcessorBox" Click="enableProcessorBox_Click" Content="Enable Process"/>
+                                    <Grid Margin="0,5,0,0">
+                                        <Label Content="Cons Scale"/>
+                                        <TextBox Name="constellationScaleBox" LostFocus="constellationScaleBox_LostFocus" Margin="80,0,5,0" Text="0"/>
+                                    </Grid>
                                 </StackPanel>
                             </GroupBox>
                         </Grid>

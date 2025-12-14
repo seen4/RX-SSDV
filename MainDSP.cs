@@ -84,8 +84,19 @@ namespace RX_SSDV
         private bool enableProcess = false;
         /*BPSK Demod*/
         public CostasLoop costasLoop;
+        public float ConstellationMultiply
+        {
+            get
+            {
+                return constellationMultiply;
+            }
+            set
+            {
+                constellationMultiply = value;
+            }
+        }
         private int constellationStepsize = 10;
-        private float constellationMultiply = 50;
+        private float constellationMultiply = 100;
 
         public MainDSP(CanvasGraphicDrawer spectrumArea, CanvasGraphicDrawer constellationArea)
         {
@@ -100,7 +111,7 @@ namespace RX_SSDV
         private void Init()
         {
             fft = new Fft(FFT_SIZE);
-            costasLoop = new CostasLoop(62.8f, 1000);
+            costasLoop = new CostasLoop(0.005f, 10);
             //UpdateFilter();
             UpdateBitmap(spectrum.Width);
 

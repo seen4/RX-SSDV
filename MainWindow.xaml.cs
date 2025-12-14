@@ -53,6 +53,7 @@ namespace RX_SSDV
         private void InitDSP()
         {
             mainDSP = new MainDSP(spectrumDrawer, constellationDrawer);
+            SetDSPArguments();
         }
 
         private void InitDrawer()
@@ -61,6 +62,13 @@ namespace RX_SSDV
             constellationDrawer = new CanvasGraphicDrawer(100, 100, constellation, constellationDisplay);
         }
 
+        private void SetDSPArguments()
+        {
+            bandWidthInput.Text = mainDSP.bandwidth.ToString();
+            freqShiftInput.Text = mainDSP.frequencyShift.ToString();
+            spectrumPeriodInput.Text = mainDSP.spectrumPeriod.ToString();
+            constellationScaleBox.Text = mainDSP.ConstellationMultiply.ToString();
+        }
 
         private void OnWindowsSizeChange(object sender, SizeChangedEventArgs arg)
         {
@@ -178,6 +186,23 @@ namespace RX_SSDV
             else
             {
                 spectrumPeriodInput.Text = mainDSP.spectrumPeriod.ToString();
+            }
+        }
+
+        private void constellationScaleBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            float consScale = mainDSP.ConstellationMultiply;
+            if (float.TryParse(constellationScaleBox.Text, out consScale))
+            {
+                constellationScaleBox.Text = $"{consScale}";
+                if (mainDSP != null)
+                {
+                    mainDSP.ConstellationMultiply = consScale;
+                }
+            }
+            else
+            {
+                constellationScaleBox.Text = mainDSP.ConstellationMultiply.ToString();
             }
         }
 

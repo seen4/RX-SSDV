@@ -85,7 +85,7 @@ namespace RX_SSDV
         /// <returns></returns>
         public static Complex CalcVCO(float phase)
         {
-            return new Complex(MathF.Sin(phase), MathF.Cos(phase));
+            return new Complex(MathF.Cos(phase), MathF.Sin(phase));
         }
 
         /// <summary>
