@@ -22,6 +22,9 @@ namespace RX_SSDV
         public static DataSourceType sourceType = DataSourceType.BasebandFile;
         public static bool audioPathEdited = false;
         public static string audioFilePath = "";
+
+        public static int readPeriod = 0;
+
         public static bool IsSourceAvalible => isSourceAvalible;
 
         private static WaveFileReader wavFileReader;
@@ -87,6 +90,7 @@ namespace RX_SSDV
                         {
                             Array.Clear(buffer, 0, bufferSize);
                             sampleAggregator.Read(buffer, 0, bufferSize);
+                            Thread.Sleep(readPeriod);
                         }
                         else
                         {

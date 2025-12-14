@@ -31,14 +31,18 @@ namespace RX_SSDV
         private SolidBrush bfBrush = new SolidBrush(Color.FromArgb(120, 0, 255, 255));
 
         /*FFT Spectrum*/
+        private bool isSpectrumOnline = false;
+        private bool spectrumUpdateFlag = false;
+        public float[] spectrumTempSamplesI;
+        public float[] spectrumTempSamplesQ;
+        public bool spectrumTempLock = false;
         public Fft fft;
-        //public Fft fft;
         public const int FFT_SIZE = 2048;
         //public const int FFT_MAX = 120;
         //public const int FFT_MIN = 0;
         public const int FFT_POS = 100;
         public const int FFT_RANGE = -1;//2048
-        public int spectrumPeriod = 50;
+        public int spectrumPeriod = 5;
         public List<double[]> fftDataset = new List<double[]>();
         public Bitmap spectrumCacheBitmap;
         private float freqPerSample = 0;
@@ -118,6 +122,8 @@ namespace RX_SSDV
             SampleSource.onDataAvalible += ProcessData;
             SampleSource.onSourceChange += OnSourceChange;
             spectrum.onSizeChange += (w, h) => { UpdateBitmap(w); };
+
+            StartSpectrum();
         }
 
         private void UpdateBitmap(int width)
@@ -157,15 +163,34 @@ namespace RX_SSDV
             }
         }
 
+        private void StartSpectrum()
+        {
+            if(!isSpectrumOnline)
+            {
+                isSpectrumOnline = true;
+
+                Task.Run(() =>
+                {
+                    while(isSpectrumOnline)
+                    {
+                        if (currentSpectrumTick < spectrumPeriod)
+                        {
+                            currentSpectrumTick++;
+                            Thread.Sleep(10);
+                        }
+                        else if (currentSpectrumTick >= spectrumPeriod && !spectrumTempLock && spectrumUpdateFlag)
+                        {
+                            spectrumUpdateFlag = false;
+                            currentSpectrumTick = 0;
+                            ProcessSpectrum(spectrumTempSamplesI, spectrumTempSamplesQ);
+                        }
+                    }
+                });
+            }
+        }
+
         public void ProcessData(float[] samplesReal, float[] samplesImag)
         {
-            currentSpectrumTick++;
-            if (currentSpectrumTick >= spectrumPeriod)
-            {
-                currentSpectrumTick = 0;
-                ProcessSpectrum(samplesReal, samplesImag);
-            }
-
             filteredSamplesI = samplesReal;
             filteredSamplesQ = samplesImag;
             if(enableFilter)
@@ -173,6 +198,21 @@ namespace RX_SSDV
 
             if(enableProcess)
                 ProcessCostas(filteredSamplesI, filteredSamplesQ);
+
+            spectrumTempLock = true;
+            spectrumTempSamplesI = new float[samplesReal.Length];
+            spectrumTempSamplesQ = new float[samplesImag.Length];
+            samplesReal.FastCopyTo(spectrumTempSamplesI,samplesReal.Length);
+            samplesImag.FastCopyTo(spectrumTempSamplesQ, samplesImag.Length);
+            spectrumTempLock = false;
+            spectrumUpdateFlag = true;
+
+            //currentSpectrumTick++;
+            //if (currentSpectrumTick >= spectrumPeriod)
+            //{
+            //    currentSpectrumTick = 0;
+            //    ProcessSpectrum(samplesReal, samplesImag);
+            //}
         }
 
         public void OnSourceChange(WaveFormat waveFormat)
@@ -220,10 +260,12 @@ namespace RX_SSDV
             {
                 float maxFreq = realSignal.Length * freqPerSample;
 
-                fft.Direct(realSignal, imagSignal);
+                float[] fftReal = new float[realSignal.Length];
+                float[] fftImag = new float[imagSignal.Length];
+                fft.Direct(realSignal, imagSignal, fftReal, fftImag);
 
-                double[] tempSpectrum = realSignal
-                    .Select((v, i) => Math.Sqrt(v * v + imagSignal[i] * imagSignal[i]))
+                double[] tempSpectrum = fftReal
+                    .Select((v, i) => Math.Sqrt(v * v + fftImag[i] * fftImag[i]))
                     .ToArray();
 
                 magnitudeSpectrum = new double[realSignal.Length];

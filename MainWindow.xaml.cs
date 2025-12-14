@@ -206,6 +206,21 @@ namespace RX_SSDV
             }
         }
 
+        private void sampleReadPeriodInput_LostFocus(object sender, RoutedEventArgs e)
+        {
+            int period = SampleSource.readPeriod;
+            if (int.TryParse(sampleReadPeriodInput.Text, out period))
+            {
+                period = Math.Abs(period);
+                sampleReadPeriodInput.Text = $"{period}";
+                SampleSource.readPeriod = period;
+            }
+            else
+            {
+                constellationScaleBox.Text = SampleSource.readPeriod.ToString();
+            }
+        }
+
         //private void applyFilterBtn_Click(object sender, RoutedEventArgs e)
         //{
         //    if (mainDSP != null)
