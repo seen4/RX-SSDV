@@ -87,7 +87,8 @@ namespace RX_SSDV
         }
         private bool enableProcess = false;
         /*BPSK Demod*/
-        public CostasLoop costasLoop;
+        //public CostasLoop costasLoop;
+        public BPSKDemod bpskDemod;
         public float ConstellationMultiply
         {
             get
@@ -115,7 +116,8 @@ namespace RX_SSDV
         private void Init()
         {
             fft = new Fft(FFT_SIZE);
-            costasLoop = new CostasLoop(0.005f, 10);
+            bpskDemod = new BPSKDemod(0.005f, 10, 0.01f, 2, 2);
+            //costasLoop = new CostasLoop(0.005f, 10);
             //UpdateFilter();
             UpdateBitmap(spectrum.Width);
 
@@ -197,7 +199,7 @@ namespace RX_SSDV
                 ProcessFilter(samplesReal, samplesImag);
 
             if(enableProcess)
-                ProcessCostas(filteredSamplesI, filteredSamplesQ);
+                ProcessBPSK(filteredSamplesI, filteredSamplesQ);
 
             spectrumTempLock = true;
             spectrumTempSamplesI = new float[samplesReal.Length];
@@ -221,11 +223,16 @@ namespace RX_SSDV
             sampleRate = waveFormat.SampleRate;
         }
 
-        public void ProcessCostas(float[] realSignal, float[] imagSignal)
+        public void ProcessBPSK(float[] realSignal, float[] imagSignal)
         {
-            float[] outRealSignal = new float[realSignal.Length];
-            float[] outImagSignal = new float[imagSignal.Length];
-            costasLoop.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
+            //float[] outRealSignal = new float[realSignal.Length];
+            //float[] outImagSignal = new float[imagSignal.Length];
+            //costasLoop.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
+
+            float[] outRealSignal;
+            float[] outImagSignal;
+
+            bpskDemod.Process(realSignal, imagSignal, out outRealSignal, out outImagSignal, true);
 
             UpdateConstellation(outRealSignal, outImagSignal);
         }
@@ -355,7 +362,7 @@ namespace RX_SSDV
                     $"\nOutput FFT[{magnitudeSpectrum.Length}]" +
                     $"\nBandwidth: {bandwidth}kHz, Frequency Shift: {frequencyShift}kHz" +
                     $"\nTime {SampleSource.GetFormatedTimeString()}" +
-                    $"\nCostas Loop [freq = {costasLoop.Phase}, phase = {costasLoop.Phase}]",
+                    $"\nCostas Loop [freq = {bpskDemod.costasLoop.Phase}, phase = {bpskDemod.costasLoop.Phase}]",
                     font, brush, new Point(5, 5));
 
                 //Separator

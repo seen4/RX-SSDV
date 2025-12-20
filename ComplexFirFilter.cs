@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics.X86;
 using NWaves.Operations.Convolution;
 using NWaves.Signals;
 using NWaves.Utils;
@@ -140,6 +142,17 @@ namespace NWaves.Filters.Base
             }
 
             return (outputI, outputQ);
+        }
+
+        /// <summary>
+        /// Processes one complex sample.
+        /// </summary>
+        /// <param name="sampleI">Input I sample of signal</param>
+        /// <param name="sampleQ">Input Q sample of signal</param>
+        public Complex ProcessComplex(float sampleI, float sampleQ)
+        {
+            (float, float) output = Process(sampleI, sampleQ);
+            return new Complex(output.Item1, output.Item2);
         }
 
         /// <summary>

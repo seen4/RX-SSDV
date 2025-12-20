@@ -1,0 +1,121 @@
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+using NWaves.Filters.Base;
+
+
+namespace RX_SSDV
+{
+    public class LMS_DD_Equalizer : ComplexFirFilter
+    {
+        private float mu;
+        public float Gain => mu;
+        private int samplesPerSymbol;
+        public int SamplesPerSymbol
+        {
+            //目前想不到加什么限制
+            get
+            {
+                return samplesPerSymbol;
+            }
+            set
+            {
+                samplesPerSymbol = value;
+            }
+        }
+
+        public LMS_DD_Equalizer(IEnumerable<float> kernelI, IEnumerable<float> kernelQ, float gain, int samplesPerSymbol) : base(kernelI, kernelQ)
+        {
+            SetGain(gain);
+            this.samplesPerSymbol = samplesPerSymbol;
+        }
+
+        public static LMS_DD_Equalizer BuildEqualizer(float gain, int kernelSize, int samplesPerSymbol)
+        {
+            float[] kernelI = new float[kernelSize];
+            float[] kernelQ = new float[kernelSize];
+
+            for(int i = 0; i < kernelI.Length; i++)
+            {
+                kernelI[i] = 1;
+                kernelQ[i] = 1;
+            }
+
+            LMS_DD_Equalizer equalizer = new LMS_DD_Equalizer(kernelI, kernelQ, gain, samplesPerSymbol);
+            equalizer.SetGain(gain);
+            return equalizer;
+        }
+
+        /// <summary>
+        /// Process samples.
+        /// </summary>
+        /// <param name="inputI">Input real samples.</param>
+        /// <param name="inputQ">Input imag samples.</param>
+        /// <param name="outputI">Output real samples.</param>
+        /// <param name="outputQ">Output imag samples.</param>
+        /// <returns>Length of output</returns>
+        public int Process(float[] inputI, float[] inputQ, float[] outputI, float[] outputQ)
+        {
+            int outputLength = -1;
+            for(int i = 0, j = 0; i < outputI.Length; i++, j+= samplesPerSymbol)
+            {
+                if(j >= inputI.Length)
+                {
+                    outputLength = i + 1;
+                    break;
+                }
+                (float, float) filterOutput = Process(inputI[j], inputQ[j]);
+
+                float sampleI = outputI[i] = filterOutput.Item1;
+                float sampleQ = outputQ[i] = filterOutput.Item2;
+
+                Complex sample = new Complex(sampleI, sampleQ);
+                Complex error;
+
+                error = CalcError(sample);
+                for (int k = 0; k < KernelI.Length; k++)
+                {
+                    Complex deltaTap = CalcTap(sample, error);
+                    KernelI[k] += (float)deltaTap.Real;
+                    KernelQ[k] += (float)deltaTap.Imaginary;
+                }
+            }
+
+            return outputLength;
+        }
+
+        /// <summary>
+        /// Calculates error of <see cref="LMS_DD_Equalizer"/> with decision.
+        /// </summary>
+        /// <param name="sample">Input sample</param>
+        /// <returns>Calculated error.</returns>
+        public Complex CalcError(Complex sample)
+        {
+            int decision = BPSKDemod.BpskDecisionMaker(sample) == 1 ? 1 : -1;
+            Complex error = decision - sample;
+            return error;
+        }
+
+        /// <summary>
+        /// Set gain.
+        /// </summary>
+        /// <param name="gain">New gain</param>
+        /// <exception cref="ArgumentOutOfRangeException">Throws if gain value not in [0, 1]</exception>
+        public void SetGain(float gain)
+        {
+            if(gain < 0 || gain > 1)
+            {
+                throw new ArgumentOutOfRangeException("gain value must in [0, 1]");
+            }
+            else
+            {
+                mu = gain;
+            }
+        }
+
+        private Complex CalcTap(Complex input, Complex d_error)
+        {
+            return Complex.Conjugate(input) * mu * d_error;
+        }
+    }
+}
