@@ -26,16 +26,19 @@ namespace RX_SSDV
         private Point[] points;
         private Point[] pointsOfFilterI;
         private Point[] pointsOfFilterQ;
+        private Point[] pointsOfconstellation;
         private Font font = new Font("Arial", 8);
         private SolidBrush brush = new SolidBrush(Color.Black);
         private SolidBrush bfBrush = new SolidBrush(Color.FromArgb(120, 0, 255, 255));
 
-        /*FFT Spectrum*/
-        private bool isSpectrumOnline = false;
-        private bool spectrumUpdateFlag = false;
+        private bool isDrawerOnline = false;
+        private bool drawerUpdateFlag = false;
         public float[] spectrumTempSamplesI;
         public float[] spectrumTempSamplesQ;
-        public bool spectrumTempLock = false;
+        public bool drawerTempLock = false;
+        private int currentDrawerTick = 0;
+
+        /*FFT Spectrum*/
         public Fft fft;
         public const int FFT_SIZE = 2048;
         //public const int FFT_MAX = 120;
@@ -46,7 +49,8 @@ namespace RX_SSDV
         public List<double[]> fftDataset = new List<double[]>();
         public Bitmap spectrumCacheBitmap;
         private float freqPerSample = 0;
-        private int currentSpectrumTick = 0;
+        private float[] fftReal;
+        private float[] fftImag;
         double[] magnitudeSpectrum;
 
         /*Filter*/
@@ -89,6 +93,8 @@ namespace RX_SSDV
         /*BPSK Demod*/
         //public CostasLoop costasLoop;
         public BPSKDemod bpskDemod;
+        private float[] demodOutputI;
+        private float[] demodOutputQ;
         public float ConstellationMultiply
         {
             get
@@ -117,8 +123,7 @@ namespace RX_SSDV
         {
             fft = new Fft(FFT_SIZE);
             bpskDemod = new BPSKDemod(0.005f, 10, 0.001f, 2, 2);
-            //costasLoop = new CostasLoop(0.005f, 10);
-            //UpdateFilter();
+
             UpdateBitmap(spectrum.Width);
 
             SampleSource.onDataAvalible += ProcessData;
@@ -126,6 +131,12 @@ namespace RX_SSDV
             spectrum.onSizeChange += (w, h) => { UpdateBitmap(w); };
 
             StartSpectrum();
+        }
+
+        public void OnSourceChange(WaveFormat waveFormat)
+        {
+            freqPerSample = waveFormat.SampleRate / FFT_SIZE;
+            sampleRate = waveFormat.SampleRate;
         }
 
         private void UpdateBitmap(int width)
@@ -167,24 +178,25 @@ namespace RX_SSDV
 
         private void StartSpectrum()
         {
-            if(!isSpectrumOnline)
+            if(!isDrawerOnline)
             {
-                isSpectrumOnline = true;
+                isDrawerOnline = true;
 
                 Task.Run(() =>
                 {
-                    while(isSpectrumOnline)
+                    while(isDrawerOnline)
                     {
-                        if (currentSpectrumTick < spectrumPeriod)
+                        if (currentDrawerTick < spectrumPeriod)
                         {
-                            currentSpectrumTick++;
+                            currentDrawerTick++;
                             Thread.Sleep(10);
                         }
-                        else if (currentSpectrumTick >= spectrumPeriod && !spectrumTempLock && spectrumUpdateFlag)
+                        else if (currentDrawerTick >= spectrumPeriod && !drawerTempLock && drawerUpdateFlag)
                         {
-                            spectrumUpdateFlag = false;
-                            currentSpectrumTick = 0;
+                            drawerUpdateFlag = false;
+                            currentDrawerTick = 0;
                             ProcessSpectrum(spectrumTempSamplesI, spectrumTempSamplesQ);
+                            UpdateConstellation(demodOutputI, demodOutputQ);
                         }
                     }
                 });
@@ -198,16 +210,19 @@ namespace RX_SSDV
             if(enableFilter)
                 ProcessFilter(samplesReal, samplesImag);
 
-            if(enableProcess)
+            drawerTempLock = true;
+            if (enableProcess)
                 ProcessBPSK(filteredSamplesI, filteredSamplesQ);
 
-            spectrumTempLock = true;
-            spectrumTempSamplesI = new float[samplesReal.Length];
-            spectrumTempSamplesQ = new float[samplesImag.Length];
-            samplesReal.FastCopyTo(spectrumTempSamplesI,samplesReal.Length);
+            if (spectrumTempSamplesI == null || spectrumTempSamplesQ == null)
+            {
+                spectrumTempSamplesI = new float[samplesReal.Length];
+                spectrumTempSamplesQ = new float[samplesImag.Length];
+            }
+            samplesReal.FastCopyTo(spectrumTempSamplesI, samplesReal.Length);
             samplesImag.FastCopyTo(spectrumTempSamplesQ, samplesImag.Length);
-            spectrumTempLock = false;
-            spectrumUpdateFlag = true;
+            drawerTempLock = false;
+            drawerUpdateFlag = true;
 
             //currentSpectrumTick++;
             //if (currentSpectrumTick >= spectrumPeriod)
@@ -217,30 +232,25 @@ namespace RX_SSDV
             //}
         }
 
-        public void OnSourceChange(WaveFormat waveFormat)
-        {
-            freqPerSample = waveFormat.SampleRate / FFT_SIZE;
-            sampleRate = waveFormat.SampleRate;
-        }
-
         public void ProcessBPSK(float[] realSignal, float[] imagSignal)
         {
             //float[] outRealSignal = new float[realSignal.Length];
             //float[] outImagSignal = new float[imagSignal.Length];
             //costasLoop.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
 
-            float[] outRealSignal;
-            float[] outImagSignal;
+            CheckBPSKOutputAvalible(realSignal.Length);
 
-            bpskDemod.Process(realSignal, imagSignal, out outRealSignal, out outImagSignal, true);
+            bpskDemod.Process(realSignal, imagSignal, demodOutputI, demodOutputQ);
 
-            UpdateConstellation(outRealSignal, outImagSignal);
+            //UpdateConstellation(demodOutputI, demodOutputQ);
         }
 
         public void ProcessFilter(float[] realSignal, float[] imagSignal)
         {
-            filteredSamplesI = new float[realSignal.Length];
-            filteredSamplesQ = new float[imagSignal.Length];
+            if(ArrayUtil.CheckNeedUpdate(filteredSamplesI, realSignal.Length))
+                filteredSamplesI = new float[realSignal.Length];
+            if(ArrayUtil.CheckNeedUpdate(filteredSamplesQ, imagSignal.Length))
+                filteredSamplesQ = new float[imagSignal.Length];
 
             if (bpFilter != null)
             {
@@ -267,15 +277,20 @@ namespace RX_SSDV
             {
                 float maxFreq = realSignal.Length * freqPerSample;
 
-                float[] fftReal = new float[realSignal.Length];
-                float[] fftImag = new float[imagSignal.Length];
+                if (ArrayUtil.CheckNeedUpdate(fftReal, realSignal.Length))
+                {
+                    fftReal = new float[realSignal.Length];
+                    fftImag = new float[imagSignal.Length];
+                }
                 fft.Direct(realSignal, imagSignal, fftReal, fftImag);
 
                 double[] tempSpectrum = fftReal
                     .Select((v, i) => Math.Sqrt(v * v + fftImag[i] * fftImag[i]))
                     .ToArray();
 
-                magnitudeSpectrum = new double[realSignal.Length];
+                //must new object, or use object pool
+                if(ArrayUtil.CheckNeedUpdate(magnitudeSpectrum, realSignal.Length) || true)
+                    magnitudeSpectrum = new double[realSignal.Length];
 
                 for (int i = 0, j = tempSpectrum.Length / 2; i < magnitudeSpectrum.Length; i++, j++)
                 {
@@ -291,23 +306,41 @@ namespace RX_SSDV
             }
         }
 
+        public void CheckBPSKOutputAvalible(int inputSize)
+        {
+            int demodOutputSize = bpskDemod.CalcOutputSize(inputSize);
+
+            if(ArrayUtil.CheckNeedUpdate(demodOutputI, demodOutputSize) || ArrayUtil.CheckNeedUpdate(demodOutputQ, demodOutputSize))
+            {
+                demodOutputI = new float[demodOutputSize];
+                demodOutputQ = new float[demodOutputSize];
+            }
+        }
+
         private void UpdateConstellation(float[] samplesReal, float[] samplesImag)
         {
             if (samplesReal.Length != samplesImag.Length)
                 return;
 
-            Point[] points = new Point[(int)(1f * samplesReal.Length / constellationStepsize) + 1];
-            for(int i = 0, j = 0; i < samplesReal.Length; i+=constellationStepsize, j++)
-            {
-                if (i >= samplesReal.Length)
-                    continue;
-                points[j] = new Point((int)(samplesReal[i] * constellationMultiply), (int)(samplesImag[i] * constellationMultiply));
-            }
+            //int sizeOfPointArr = (int)(1f * samplesReal.Length / constellationStepsize) + 1;
+            //if (pointsOfconstellation == null || pointsOfconstellation.Length != sizeOfPointArr)
+            //{
+            //    pointsOfconstellation = new Point[sizeOfPointArr];
+            //}
+            //for(int i = 0, j = 0; i < samplesReal.Length; i+=constellationStepsize, j++)
+            //{
+            //    if (i >= samplesReal.Length)
+            //        continue;
+            //    pointsOfconstellation[j] = new Point((int)(samplesReal[i] * constellationMultiply), (int)(samplesImag[i] * constellationMultiply));
+            //}
 
-            constellation.Draw((graphics) => {
-                for (int i = 0; i < points.Length; i++)
+            constellation.Draw((graphics) =>
+            {
+                for (int i = 0; i < samplesReal.Length; i += constellationStepsize)
                 {
-                    graphics.DrawRectangle(Pens.Green, points[i].X + 50, points[i].Y + 50, 1, 1);
+                    int x = (int)(samplesReal[i] * constellationMultiply) + 50;
+                    int y = (int)(samplesImag[i] * constellationMultiply) + 50;
+                    graphics.DrawRectangle(Pens.Green, x, y, 1, 1);
                 }
             });
         }

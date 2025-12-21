@@ -66,7 +66,7 @@ namespace RX_SSDV
         {
             bandWidthInput.Text = mainDSP.bandwidth.ToString();
             freqShiftInput.Text = mainDSP.frequencyShift.ToString();
-            spectrumPeriodInput.Text = mainDSP.spectrumPeriod.ToString();
+            drawerPeriodInput.Text = mainDSP.spectrumPeriod.ToString();
             constellationScaleBox.Text = mainDSP.ConstellationMultiply.ToString();
         }
 
@@ -175,9 +175,9 @@ namespace RX_SSDV
         private void spectrumPeriodInput_LostFocus(object sender, RoutedEventArgs e)
         {
             int period = mainDSP.spectrumPeriod;
-            if (int.TryParse(spectrumPeriodInput.Text, out period))
+            if (int.TryParse(drawerPeriodInput.Text, out period))
             {
-                spectrumPeriodInput.Text = $"{period}";
+                drawerPeriodInput.Text = $"{period}";
                 if (mainDSP != null)
                 {
                     mainDSP.spectrumPeriod = period;
@@ -185,7 +185,7 @@ namespace RX_SSDV
             }
             else
             {
-                spectrumPeriodInput.Text = mainDSP.spectrumPeriod.ToString();
+                drawerPeriodInput.Text = mainDSP.spectrumPeriod.ToString();
             }
         }
 

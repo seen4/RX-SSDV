@@ -70,8 +70,8 @@
                             <GroupBox Header="Display" Grid.Row="1">
                                 <StackPanel Orientation="Vertical">
                                     <Grid Margin="0,0,0,0">
-                                        <Label Content="Spectrum Period"/>
-                                        <TextBox Name="spectrumPeriodInput" LostFocus="spectrumPeriodInput_LostFocus" Margin="120,0,5,0" Text="1"/>
+                                        <Label Content="Drawer Period"/>
+                                        <TextBox Name="drawerPeriodInput" LostFocus="drawerPeriodInput_LostFocus" Margin="120,0,5,0" Text="1"/>
                                     </Grid>
                                 </StackPanel>
                             </GroupBox>

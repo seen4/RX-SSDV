@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Numerics;
 using NWaves.Utils;
+using RX_SSDV.Utils;
 
 namespace RX_SSDV
 {
@@ -12,6 +13,13 @@ namespace RX_SSDV
     {
         public CostasLoop costasLoop;
         public LMS_DD_Equalizer equalizer;
+
+        private float[] outCostasI;
+        private float[] outCostasQ;
+        private float[] outEqualizerI;
+        private float[] outEqualizerQ;
+        private float[] cuttedEqualizerI;
+        private float[] cuttedEqualizerQ;
 
         public BPSKDemod()
         {
@@ -25,35 +33,41 @@ namespace RX_SSDV
             equalizer = LMS_DD_Equalizer.BuildEqualizer(equalizerGain, equalizerKernelSize, equalizerSPS);
         }
 
-        public void Process(float[] realSignal, float[] imagSignal, out float[] outReal, out float[] outImag, bool useEqualizerCut = false)
+        public void Process(float[] realSignal, float[] imagSignal, float[] outReal, float[] outImag)
         {
-            float[] outCostasI = new float[realSignal.Length];
-            float[] outCostasQ = new float[imagSignal.Length];
+            CheckProcessOutputArr(realSignal.Length);
+            //float[] outCostasI = new float[realSignal.Length];
+            //float[] outCostasQ = new float[imagSignal.Length];
             ProcessCostas(realSignal, imagSignal, outCostasI, outCostasQ);
 
             //outReal = outCostasI;
             //outImag = outCostasQ;
 
-            float[] outEqualizerI = new float[outCostasI.Length];
-            float[] outEqualizerQ = new float[outCostasQ.Length];
+            //float[] outEqualizerI = new float[outCostasI.Length];
+            //float[] outEqualizerQ = new float[outCostasQ.Length];
             int equalizerOutputLength = ProcessEqualizer(outCostasI, outCostasQ, outEqualizerI, outEqualizerQ);
 
-            if (useEqualizerCut)
-            {
-                float[] cuttedEqualizerI = new float[equalizerOutputLength];
-                float[] cuttedEqualizerQ = new float[equalizerOutputLength];
+            outEqualizerI.FastCopyTo(outReal, equalizerOutputLength);
+            outEqualizerQ.FastCopyTo(outImag, equalizerOutputLength);
 
-                outEqualizerI.FastCopyTo(cuttedEqualizerI, equalizerOutputLength);
-                outEqualizerQ.FastCopyTo(cuttedEqualizerQ, equalizerOutputLength);
+            //if (useEqualizerCut)
+            //{
+            //    //float[] cuttedEqualizerI = new float[equalizerOutputLength];
+            //    //float[] cuttedEqualizerQ = new float[equalizerOutputLength];
 
-                outReal = cuttedEqualizerI;
-                outImag = cuttedEqualizerQ;
+            //    CheckEqualizerCutArr(equalizerOutputLength);
 
-                return;
-            }
+            //    outEqualizerI.FastCopyTo(cuttedEqualizerI, equalizerOutputLength);
+            //    outEqualizerQ.FastCopyTo(cuttedEqualizerQ, equalizerOutputLength);
 
-            outReal = outEqualizerI;
-            outImag = outEqualizerQ;
+            //    outReal = cuttedEqualizerI;
+            //    outImag = cuttedEqualizerQ;
+
+            //    return;
+            //}
+
+            //outReal = outEqualizerI;
+            //outImag = outEqualizerQ;
         }
 
         public void ProcessCostas(float[] realSignal, float[] imagSignal, float[] outRealSignal, float[] outImagSignal)
@@ -65,6 +79,39 @@ namespace RX_SSDV
         {
             return equalizer.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
         }
+
+        public int CalcOutputSize(int inputSize)
+        {
+            return equalizer.CalcOutputSize(inputSize);
+        }
+
+        /// <summary>
+        /// Check output if arrays avalible, if not, init array(s) by 'arrSize'.
+        /// </summary>
+        /// <param name="arrSize">Array size</param>
+        public void CheckProcessOutputArr(int arrSize)
+        {
+            if (ArrayUtil.CheckNeedUpdate(outCostasI, arrSize) || ArrayUtil.CheckNeedUpdate(outCostasQ, arrSize))
+            {
+                outCostasI = new float[arrSize];
+                outCostasQ = new float[arrSize];
+            }
+
+            if (ArrayUtil.CheckNeedUpdate(outEqualizerI, arrSize) || ArrayUtil.CheckNeedUpdate(outEqualizerQ, arrSize))
+            {
+                outEqualizerI = new float[arrSize];
+                outEqualizerQ = new float[arrSize];
+            }
+        }
+
+        //public void CheckEqualizerCutArr(int arrSize)
+        //{
+        //    if (cuttedEqualizerI == null || cuttedEqualizerQ == null || cuttedEqualizerI.Length != arrSize || cuttedEqualizerQ.Length != arrSize)
+        //    {
+        //        cuttedEqualizerI = new float[arrSize];
+        //        cuttedEqualizerQ = new float[arrSize];
+        //    }
+        //}
 
         /// <summary>
         /// Decision maker of BPSK modulation.

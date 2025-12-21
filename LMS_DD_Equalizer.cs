@@ -89,6 +89,16 @@ namespace RX_SSDV
             return outputLength;
         }
 
+        /// <summary>
+        /// Calcucate the size of the equalizer output array(May equals the real output plus one).
+        /// </summary>
+        /// <param name="inputSize">Input array size</param>
+        /// <returns>Output array size</returns>
+        public int CalcOutputSize(int inputSize)
+        {
+            return (int)((float)inputSize / samplesPerSymbol) + 1;
+        }
+
         private Complex CalcTap(Complex input, Complex d_error)
         {
             return mu * Complex.Conjugate(input) * d_error;
