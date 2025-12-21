@@ -172,7 +172,7 @@ namespace RX_SSDV
             mainDSP.EnableProcess = (bool)enableProcessorBox.IsChecked;
         }
 
-        private void spectrumPeriodInput_LostFocus(object sender, RoutedEventArgs e)
+        private void drawerPeriodInput_LostFocus(object sender, RoutedEventArgs e)
         {
             int period = mainDSP.spectrumPeriod;
             if (int.TryParse(drawerPeriodInput.Text, out period))
