@@ -16,7 +16,7 @@ namespace RX_SSDV
         public BPSKDemod()
         {
             costasLoop = new CostasLoop(0.005f, 10);
-            equalizer = LMS_DD_Equalizer.BuildEqualizer(0.05f, 25, 2);
+            equalizer = LMS_DD_Equalizer.BuildEqualizer(0.05f, 2, 2);
         }
 
         public BPSKDemod(float costasBw, float costasFreqLimit, float equalizerGain, int equalizerKernelSize, int equalizerSPS)

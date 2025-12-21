@@ -1,7 +1,8 @@
+using NWaves.Filters.Base;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using NWaves.Filters.Base;
+using System.Reflection;
 
 
 namespace RX_SSDV
@@ -35,11 +36,7 @@ namespace RX_SSDV
             float[] kernelI = new float[kernelSize];
             float[] kernelQ = new float[kernelSize];
 
-            for(int i = 0; i < kernelI.Length; i++)
-            {
-                kernelI[i] = 1;
-                kernelQ[i] = 1;
-            }
+            kernelI[0] = 1;
 
             LMS_DD_Equalizer equalizer = new LMS_DD_Equalizer(kernelI, kernelQ, gain, samplesPerSymbol);
             equalizer.SetGain(gain);
@@ -57,7 +54,7 @@ namespace RX_SSDV
         public int Process(float[] inputI, float[] inputQ, float[] outputI, float[] outputQ)
         {
             int outputLength = -1;
-            for(int i = 0, j = 0; i < outputI.Length; i++, j+= samplesPerSymbol)
+            for(int i = 0, j = 0; i < outputI.Length; i++, j += samplesPerSymbol)
             {
                 if(j >= inputI.Length)
                 {
@@ -70,18 +67,31 @@ namespace RX_SSDV
                 float sampleQ = outputQ[i] = filterOutput.Item2;
 
                 Complex sample = new Complex(sampleI, sampleQ);
-                Complex error;
 
-                error = CalcError(sample);
-                for (int k = 0; k < KernelI.Length; k++)
+                Complex error = CalcError(sample);
+                for (int k = 0; k < _kernelSize; k++)
                 {
                     Complex deltaTap = CalcTap(sample, error);
-                    KernelI[k] += (float)deltaTap.Real;
-                    KernelQ[k] += (float)deltaTap.Imaginary;
+                    float deltaI = (float)deltaTap.Real;
+                    float deltaQ = (float)deltaTap.Imaginary;
+                    _bI[k] += deltaI;
+                    _bI[_kernelSize + k] += deltaI;
+                    _bQ[k] += deltaQ;
+                    _bQ[_kernelSize + k] += deltaQ;
+
+                    //if (deltaI > 5)
+                    //{
+                    //    int a = 0;
+                    //}
                 }
             }
 
             return outputLength;
+        }
+
+        private Complex CalcTap(Complex input, Complex d_error)
+        {
+            return mu * Complex.Conjugate(input) * d_error;
         }
 
         /// <summary>
@@ -92,7 +102,7 @@ namespace RX_SSDV
         public Complex CalcError(Complex sample)
         {
             int decision = BPSKDemod.BpskDecisionMaker(sample) == 1 ? 1 : -1;
-            Complex error = decision - sample;
+            Complex error = new Complex(decision - sample.Real, -sample.Imaginary);
             return error;
         }
 
@@ -111,11 +121,6 @@ namespace RX_SSDV
             {
                 mu = gain;
             }
-        }
-
-        private Complex CalcTap(Complex input, Complex d_error)
-        {
-            return Complex.Conjugate(input) * mu * d_error;
         }
     }
 }

@@ -116,7 +116,7 @@ namespace RX_SSDV
         private void Init()
         {
             fft = new Fft(FFT_SIZE);
-            bpskDemod = new BPSKDemod(0.005f, 10, 0.01f, 2, 2);
+            bpskDemod = new BPSKDemod(0.005f, 10, 0.001f, 2, 2);
             //costasLoop = new CostasLoop(0.005f, 10);
             //UpdateFilter();
             UpdateBitmap(spectrum.Width);
@@ -296,12 +296,12 @@ namespace RX_SSDV
             if (samplesReal.Length != samplesImag.Length)
                 return;
 
-            Point[] points = new Point[samplesReal.Length];
-            for(int i = 0; i < samplesReal.Length; i+=constellationStepsize)
+            Point[] points = new Point[(int)(1f * samplesReal.Length / constellationStepsize) + 1];
+            for(int i = 0, j = 0; i < samplesReal.Length; i+=constellationStepsize, j++)
             {
                 if (i >= samplesReal.Length)
                     continue;
-                points[i] = new Point((int)(samplesReal[i] * constellationMultiply), (int)(samplesImag[i] * constellationMultiply));
+                points[j] = new Point((int)(samplesReal[i] * constellationMultiply), (int)(samplesImag[i] * constellationMultiply));
             }
 
             constellation.Draw((graphics) => {
