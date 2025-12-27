@@ -1,35 +1,26 @@
-﻿using NWaves.Filters.Base;
-using NWaves.Filters.Polyphase;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Numerics;
+using NWaves.Filters.Base;
 
 namespace RX_SSDV
 {
-    /// <summary>
-    /// The complex version of <see cref="PolyphaseSystem"/>.(Constructor only)
-    /// </summary>
     public class PolyphaseFilterBank
     {
-        public ComplexFirFilter[] filters;
-        public ComplexFirFilter[] multirateFilters;
+        public FirFilter[] filters;
+        public FirFilter[] multirateFilters;
 
-        public PolyphaseFilterBank(Complex[] kernel, int n)
+        public PolyphaseFilterBank(double[] kernel, int n, int type = 1)
         {
-            int len = (kernel.Length + 1) / n;
+            filters = new FirFilter[n];
+            multirateFilters = new FirFilter[n];
 
-            filters = new ComplexFirFilter[n];
-            multirateFilters = new ComplexFirFilter[n];
+            var len = (kernel.Length + 1) / n;
 
-            for (int i = 0; i < filters.Length; i++)
+            for (var i = 0; i < filters.Length; i++)
             {
-                float[] filterKernelI = new float[kernel.Length];
-                float[] filterKernelQ = new float[kernel.Length];
-                float[] mrFilterKernelI = new float[len];
-                float[] mrFilterKernelQ = new float[len];
+                var filterKernel = new double[kernel.Length];
+                var mrFilterKernel = new double[len];
 
                 for (var j = 0; j < len; j++)
                 {
@@ -37,16 +28,29 @@ namespace RX_SSDV
 
                     if (kernelPos < kernel.Length)
                     {
-                        Complex currentKernel = kernel[kernelPos];
-                        filterKernelI[kernelPos] = (float)currentKernel.Real;
-                        filterKernelQ[kernelPos] = (float)currentKernel.Imaginary;
-                        mrFilterKernelI[j] = (float)currentKernel.Real;
-                        mrFilterKernelQ[j] = (float)currentKernel.Imaginary;
+                        filterKernel[kernelPos] = kernel[kernelPos];
+                        mrFilterKernel[j] = kernel[kernelPos];
                     }
                 }
 
-                filters[i] = new ComplexFirFilter(filterKernelI, filterKernelQ);
-                multirateFilters[i] = new ComplexFirFilter(mrFilterKernelI, mrFilterKernelQ);
+                filters[i] = new FirFilter(filterKernel);
+                multirateFilters[i] = new FirFilter(mrFilterKernel);
+            }
+
+            // type-II -> reverse
+
+            if (type == 2)
+            {
+                for (var i = 0; i < filters.Length / 2; i++)
+                {
+                    var tmp = filters[i];
+                    filters[i] = filters[n - 1 - i];
+                    filters[n - 1 - i] = tmp;
+
+                    tmp = multirateFilters[i];
+                    multirateFilters[i] = multirateFilters[n - 1 - i];
+                    multirateFilters[n - 1 - i] = tmp;
+                }
             }
         }
     }

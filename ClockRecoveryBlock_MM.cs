@@ -11,21 +11,21 @@ namespace RX_SSDV
 {
     public class ClockRecoveryBlock_MM
     {
-        float mu;
-        float omega;
-        float omegaGain;
-        float muGain;
-        float omegaRelativeLimit;
-        float omegaMid;
-        float omegaLimit;
+        public PolyphaseFilterBank pfb;
 
-        float sample;
-        float lastSample;
+        private float mu;
+        private float muGain;
+        private float omegaMid;
+        private float omegaRelativeLimit;
+        private float omegaLimit;
+        private float omegaGain;
 
-        Complex p_2T, p_1T, p_0T;
-        Complex c_2T, c_1T, c_0T;
-
-        PolyphaseFilterBank pfb;
+        private float p_2T;
+        private float p_1T;
+        private float p_0T;
+        private float c_2T;
+        private float c_1T;
+        private float c_0T;
 
         public ClockRecoveryBlock_MM(float mu, float muGain, float omega, float omegaGain, float omegaLimit, int nFilter, int nTaps)
         {
@@ -36,7 +36,7 @@ namespace RX_SSDV
             omegaLimit = omegaRelativeLimit * omega;
             this.omegaGain = omegaGain;
 
-            //pfb = new PolyphaseFilterBank(RootRaisedCosine(0.1, 48000, 2, 1, nTaps), nTaps);
+            pfb = new PolyphaseFilterBank(RootRaisedCosine(0.001, 48000 / 5.0, 2, 0.35, nTaps), nTaps);
         }
 
         /// <summary>
@@ -51,12 +51,12 @@ namespace RX_SSDV
 
         }
 
-        public float[] RootRaisedCosine(double gain, double sampling_freq, double symbol_rate, double alpha, int ntaps)
+        public static double[] RootRaisedCosine(double gain, double sampling_freq, double symbol_rate, double alpha, int ntaps)
         {
             ntaps |= 1; // ensure that ntaps is odd
 
             double spb = sampling_freq / symbol_rate; // samples per bit/symbol
-            float[] taps = new float[ntaps];
+            double[] taps = new double[ntaps];
             double scale = 0;
             for (int i = 0; i < ntaps; i++)
             {
@@ -80,22 +80,21 @@ namespace RX_SSDV
                     if (alpha == 1)
                     {
                         taps[i] = -1;
-                        scale += taps[i];
                         continue;
                     }
                     x3 = (1 - alpha) * x1;
                     x2 = (1 + alpha) * x1;
                     num = (Sin(x2) * (1 + alpha) * PI -
-                           Cos(x3) * ((1 - alpha) * PI * spb) / (4 * alpha * xindx) +
-                           Sin(x3) * spb * spb / (4 * alpha * xindx * xindx));
+                        Cos(x3) * ((1 - alpha) * PI * spb) / (4 * alpha * xindx) +
+                        Sin(x3) * spb * spb / (4 * alpha * xindx * xindx));
                     den = -32 * PI * alpha * alpha * xindx / spb;
                 }
-                taps[i] = (float)(4 * alpha * num / den);
+                taps[i] = 4 * alpha * num / den;
                 scale += taps[i];
             }
 
             for (int i = 0; i < ntaps; i++)
-                taps[i] = taps[i] * (float)(gain / scale);
+                taps[i] = taps[i] * gain / scale;
 
             return taps;
         }
