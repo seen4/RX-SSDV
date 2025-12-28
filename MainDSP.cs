@@ -46,7 +46,9 @@ namespace RX_SSDV
         public const int FFT_POS = 100;
         public const int FFT_RANGE = -1;//2048
         public int spectrumPeriod = 5;
-        public List<double[]> fftDataset = new List<double[]>();
+        //public List<double[]> fftDataset = new List<double[]>();
+        public int fftDatasetIndex = 0;
+        public double[][] fftDataset;
         public Bitmap spectrumCacheBitmap;
         private float freqPerSample = 0;
         private float[] fftReal;
@@ -142,6 +144,11 @@ namespace RX_SSDV
         private void UpdateBitmap(int width)
         {
             spectrumCacheBitmap = new Bitmap(width, 1);
+            fftDataset = new double[FFT_POS][];
+            for (int i = 0; i < fftDataset.Length; i++)
+            {
+                fftDataset[i] = new double[SampleSource.WAV_BUFFER_SIZE];
+            }
         }
 
         public void UpdateFilter()
@@ -271,7 +278,6 @@ namespace RX_SSDV
 
         public void ProcessSpectrum(float[] realSignal, float[] imagSignal)
         {
-
             //FFT
             if ((realSignal.Length > 0 && realSignal.Length >= FFT_SIZE) && (realSignal.Length == imagSignal.Length))
             {
@@ -289,7 +295,7 @@ namespace RX_SSDV
                     .ToArray();
 
                 //must new object, or use object pool
-                if(ArrayUtil.CheckNeedUpdate(magnitudeSpectrum, realSignal.Length) || true)
+                if(ArrayUtil.CheckNeedUpdate(magnitudeSpectrum, realSignal.Length))
                     magnitudeSpectrum = new double[realSignal.Length];
 
                 for (int i = 0, j = tempSpectrum.Length / 2; i < magnitudeSpectrum.Length; i++, j++)
@@ -359,12 +365,15 @@ namespace RX_SSDV
                 actualProcess = magnitudeSpectrum;
             }
 
-            if (fftDataset.Count - 1 >= FFT_POS)
+            if (fftDatasetIndex >= FFT_POS)
             {
-                fftDataset.RemoveAt(0);
+                fftDatasetIndex = 0;
             }
 
-            fftDataset.Add(actualProcess);
+            //fftDataset.Add(actualProcess);
+            actualProcess.FastCopyTo(fftDataset[fftDatasetIndex], actualProcess.Length);
+            int readerIndex = fftDatasetIndex;
+            fftDatasetIndex++;
 
             points = actualProcess
                 .Select((v, i) => new Point((int)(i * ((float)spectrum.Width / actualProcess.Length)), spectrum.Height - (int)(v * 2) - FFT_POS))
@@ -389,6 +398,7 @@ namespace RX_SSDV
                 graphics.FillRectangle(bfBrush, centerPos + (int)(bpMin * scaleCoeff), 0, (bpMax - bpMin) * scaleCoeff, spectrum.Height - FFT_POS);
 
                 //Analyze
+                //不要担心这里编译器会帮你优化成StringBuilder的
                 graphics.DrawString(
                     $"FFT[{FFT_SIZE}](Visualizing index range: {(FFT_RANGE < 0 ? "Unlimited" : " 0 - " + FFT_RANGE)} Freq: -{maxFreq / 2000}kHz - {maxFreq / 2000}kHz )" +
                     $"\nInput Signal[Real {lengthReal}, Imag {lengthImag}]" +
@@ -402,20 +412,25 @@ namespace RX_SSDV
                 graphics.DrawLine(Pens.Black, new Point(0, spectrum.Height - FFT_POS), new Point(spectrum.Width, spectrum.Height - FFT_POS));
 
                 //Waterfall
-                for (int i = 0; i < fftDataset.Count; i++)
+                for (int i = 0, j = readerIndex; i < fftDataset.Length; i++, j--)
                 {
-                    double[] data = fftDataset[^(i + 1)];
-                    int lastX = -1;
-                    for (int j = 0; j < data.Length; j++)
+                    if(j < 0)
                     {
-                        int x = (int)(j * pixelsPerSample);
+                        j = fftDataset.Length - 1;
+                    }
+                    //double[] data = fftDataset[^(i + 1)];
+                    double[] data = fftDataset[j];
+                    int lastX = -1;
+                    for (int k = 0; k < data.Length; k++)
+                    {
+                        int x = (int)(k * pixelsPerSample);
                         if (x != lastX)
                         {
                             if (x > lastX + 1)
                             {
                                 x = lastX + 1;
                             }
-                            int value = (int)Math.Clamp(data[j] * 20, 0, 255);
+                            int value = (int)Math.Clamp(data[k] * 20, 0, 255);
                             spectrumCacheBitmap.SetPixel(x, 0, Color.FromArgb(value, 0, 255 / 4));
                             lastX = x;
                         }
