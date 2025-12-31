@@ -19,5 +19,10 @@ namespace RX_SSDV.Utils
 
             return output;
         }
+
+        public static bool CheckNeedUpdate(Array array, int size)
+        {
+            return array == null || array.Length != size;
+        }
     }
 }
