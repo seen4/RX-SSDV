@@ -1,12 +1,17 @@
-﻿using System;
+﻿using NWaves.Filters.Base;
+using NWaves.Utils;
+using RX_SSDV.Utils;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using System.Runtime.Intrinsics;
 using System.Text;
 using System.Threading.Tasks;
-using static System.Math;
+using System.Windows;
 using static RX_SSDV.CostasLoop;
+using static System.Math;
 
 namespace RX_SSDV
 {
@@ -32,6 +37,10 @@ namespace RX_SSDV
         private Complex c_1T;
         private Complex c_0T;
 
+        private float[] bufferI;
+        private float[] bufferQ;
+        private bool isBufferAvalible = false;
+
         public ClockRecoveryBlock_MM(float mu, float muGain, float omega, float omegaGain, float omegaLimit, int nFilter, int nTaps)
         {
             this.mu = mu;
@@ -43,12 +52,19 @@ namespace RX_SSDV
             omegaMid = omega;
             omegaLimit = omegaRelativeLimit * omega;
 
-            pfb = new PolyphaseFilterBank(RootRaisedCosine(0.001, 48000 / 5.0, 2, 0.35, nTaps), nTaps);
+            UpdatePFB(nFilter, nTaps);
         }
 
-        public void UpdatePFB(int sampleRate, int nTaps)
+        public void UpdatePFB(int nFilt, int nTaps)
         {
-            pfb = new PolyphaseFilterBank(RootRaisedCosine(0.001, sampleRate / 5.0, 2, 0.35, nTaps), nTaps);
+            pfb = new PolyphaseFilterBank(RootRaisedCosine(16, nFilt * nTaps, 1, 0.35, nTaps), nFilt);
+            UpdateBuffer(pfb.NTaps - 1);
+        }
+
+        private void UpdateBuffer(int bufferSize)
+        {
+            bufferI = new float[bufferSize];
+            bufferQ = new float[bufferSize];
         }
 
         /// <summary>
@@ -65,15 +81,18 @@ namespace RX_SSDV
 
             // See Satdump:clock_recovery_mm.cpp
 
-            for (int i = 0; i < inputSamplesI.Length && inc < inputSamplesI.Length; i++)
+            ouc = 0;
+            inc = 0;
+            for (; ouc < inputSamplesI.Length && inc < inputSamplesI.Length;)
             {
+                if (inc + pfb.NTaps >= inputSamplesI.Length)
+                    break;
+
                 // Propagate delay
                 p_2T = p_1T;
                 p_1T = p_0T;
                 c_2T = c_1T;
                 c_1T = c_0T;
-
-                //ouc = 0;
 
                 // Compute output
                 int imu = (int)MathF.Round(mu * pfb.FilterCount);
@@ -83,8 +102,8 @@ namespace RX_SSDV
                     imu = pfb.FilterCount - 1;
 
                 p_0T = Convolution(inputSamplesI, inputSamplesQ, inc, pfb.taps[imu]);
-                outputSamplesI[i] = (float)p_0T.Real;
-                outputSamplesQ[i] = (float)p_0T.Imaginary;
+                outputSamplesI[ouc] = (float)p_0T.Real;
+                outputSamplesQ[ouc++] = (float)p_0T.Imaginary;
 
                 // Slice it
                 c_0T = new Complex(p_0T.Real > 0.0f ? 1.0f : 0.0f, p_0T.Imaginary > 0.0f ? 1.0f : 0.0f);
@@ -125,7 +144,10 @@ namespace RX_SSDV
                     inc = 0;
                 */
             }
-            //return p_0T;
+
+            inputSamplesI.FastCopyTo(bufferI, bufferI.Length - 1, inputSamplesI.Length - bufferI.Length);
+            inputSamplesQ.FastCopyTo(bufferQ, bufferQ.Length - 1, inputSamplesQ.Length - bufferQ.Length);
+            isBufferAvalible = true;
         }
 
         /// <summary>
@@ -136,18 +158,54 @@ namespace RX_SSDV
         /// <param name="startIndex">Start index of input samples</param>
         /// <param name="pfbTaps">Taps for the convolution(form <see cref="PolyphaseFilterBank"/>)</param>
         /// <returns>Convolved sample</returns>
-        public Complex Convolution(float[] inputSamplesI, float[] inputSamplesQ, int startIndex, double[] pfbTaps)
+        protected Complex Convolution(float[] inputSamplesI, float[] inputSamplesQ, int startIndex, double[] pfbTaps)
         {
             double sumI = 0;
             double sumQ = 0;
 
-            for(int i = 0; i < pfbTaps.Length; i++)
+            for (int i = 0; i < pfbTaps.Length; i++)
             {
-                sumI += inputSamplesI[i + startIndex] * pfbTaps[i];
-                sumQ += inputSamplesQ[i + startIndex] * pfbTaps[i];
+                float sampleI;
+                float sampleQ;
+
+                if (isBufferAvalible)
+                {
+                    int tempIndex = startIndex - pfb.NTaps + 1;
+
+                    if (tempIndex + i < 0)
+                    {
+                        int index = startIndex + i;
+                        sampleI = bufferI[index];
+                        sampleQ = bufferQ[index];
+                    }
+                    else
+                    {
+                        int index = tempIndex + i;
+                        sampleI = inputSamplesI[index];
+                        sampleQ = inputSamplesQ[index];
+                    }
+                }
+                else
+                {
+                    sampleI = inputSamplesI[startIndex + i];
+                    sampleQ = inputSamplesQ[startIndex + i];
+                }
+
+                sumI += sampleI * pfbTaps[i];
+                sumQ += sampleQ * pfbTaps[i];
             }
 
             return new Complex(sumI, sumQ);
+        }
+
+        /// <summary>
+        /// Calcucate the size of the clock recovery output array(May equals the real output plus one).
+        /// </summary>
+        /// <param name="inputSize">Input array size</param>
+        /// <returns>Output array size</returns>
+        public int CalcOutputSize(int inputSize)
+        {
+            return (int)((float)inputSize / omega) + 1;
         }
 
         public static double[] RootRaisedCosine(double gain, double sampling_freq, double symbol_rate, double alpha, int ntaps)

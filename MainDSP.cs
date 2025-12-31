@@ -18,7 +18,7 @@ namespace RX_SSDV
     public class MainDSP
     {
         /*Base*/
-        private int sampleRate = 1000;
+        private static int sampleRate = 48000;
 
         /*Drawing*/
         private CanvasGraphicDrawer spectrum;
@@ -46,7 +46,6 @@ namespace RX_SSDV
         public const int FFT_POS = 100;
         public const int FFT_RANGE = -1;//2048
         public int spectrumPeriod = 5;
-        //public List<double[]> fftDataset = new List<double[]>();
         public int fftDatasetIndex = 0;
         public double[][] fftDataset;
         public Bitmap spectrumCacheBitmap;
@@ -80,6 +79,16 @@ namespace RX_SSDV
         private float[] filteredSamplesQ;
 
         /*SSDV Process*/
+        public static int symobolRate = 9600;
+        private static int samplesPerSymbol = 5;
+        public static int SamplePerSymbol
+        {
+            get
+            {
+                return GetSPS();
+            }
+        }
+
         public bool EnableProcess
         {
             get
@@ -129,7 +138,7 @@ namespace RX_SSDV
             //    0.001f, 2, 2,
             //    5, 0.007f, 5, 0.01f, 0.05f, 5, 11 * 5 * SampleSource.WaveFormat.SampleRate);
             bpskDemod = new BPSKDemod();
-            bpskDemod.InitClockSync(5, 0.007f, 5, 0.01f, 0.05f, 5, 11 * 5 * 2);
+            bpskDemod.InitClockSync(5, 0.01f, 5, 0.01f, 0.05f, 5, 11 * 5 * samplesPerSymbol);
 
             UpdateBitmap(spectrum.Width);
 
@@ -139,12 +148,20 @@ namespace RX_SSDV
 
             StartSpectrum();
         }
+        
+        public static int GetSPS()
+        {
+            int sps = sampleRate / symobolRate;
+            samplesPerSymbol = sps;
+            return sps;
+        }
 
         public void OnSourceChange(WaveFormat waveFormat)
         {
             freqPerSample = waveFormat.SampleRate / FFT_SIZE;
             sampleRate = waveFormat.SampleRate;
-            bpskDemod.clockRecovery.UpdatePFB(sampleRate, 11 * 5 * sampleRate);
+            bpskDemod.clockRecovery.UpdatePFB(5, 11 * 5 * GetSPS());
+            //bpskDemod.equalizer.SamplesPerSymbol = samplesPerSymbol;
         }
 
         private void UpdateBitmap(int width)
@@ -320,7 +337,8 @@ namespace RX_SSDV
 
         public void CheckBPSKOutputAvalible(int inputSize)
         {
-            int demodOutputSize = bpskDemod.CalcOutputSize(inputSize);
+            //int demodOutputSize = bpskDemod.CalcOutputSize(inputSize);
+            int demodOutputSize = 2048;
 
             if(ArrayUtil.CheckNeedUpdate(demodOutputI, demodOutputSize) || ArrayUtil.CheckNeedUpdate(demodOutputQ, demodOutputSize))
             {

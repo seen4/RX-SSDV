@@ -66,12 +66,13 @@ namespace RX_SSDV
                 float sampleI = outputI[i] = filterOutput.Item1;
                 float sampleQ = outputQ[i] = filterOutput.Item2;
 
+                Complex inputSample = new Complex(inputI[j], inputQ[j]);
                 Complex sample = new Complex(sampleI, sampleQ);
 
                 Complex error = CalcError(sample);
                 for (int k = 0; k < _kernelSize; k++)
                 {
-                    Complex deltaTap = CalcTap(sample, error);
+                    Complex deltaTap = CalcTap(inputSample, error);
                     float deltaI = (float)deltaTap.Real;
                     float deltaQ = (float)deltaTap.Imaginary;
                     _bI[k] += deltaI;
@@ -79,7 +80,7 @@ namespace RX_SSDV
                     _bQ[k] += deltaQ;
                     _bQ[_kernelSize + k] += deltaQ;
 
-                    //if (deltaI > 5)
+                    //if (sampleI > 100)
                     //{
                     //    int a = 0;
                     //}
@@ -87,16 +88,6 @@ namespace RX_SSDV
             }
 
             return outputLength;
-        }
-
-        /// <summary>
-        /// Calcucate the size of the equalizer output array(May equals the real output plus one).
-        /// </summary>
-        /// <param name="inputSize">Input array size</param>
-        /// <returns>Output array size</returns>
-        public int CalcOutputSize(int inputSize)
-        {
-            return (int)((float)inputSize / samplesPerSymbol) + 1;
         }
 
         private Complex CalcTap(Complex input, Complex d_error)

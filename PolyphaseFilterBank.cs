@@ -19,6 +19,14 @@ namespace RX_SSDV
                 return nFilter;
             }
         }
+        private int nTaps;
+        public int NTaps
+        {
+            get
+            {
+                return nTaps;
+            }
+        }
 
         public PolyphaseFilterBank(double[] kernel, int n, int type = 1)
         {
@@ -30,9 +38,11 @@ namespace RX_SSDV
 
             var len = (kernel.Length + 1) / n;
 
+            nTaps = len;
+
             for (var i = 0; i < n; i++)
             {
-                //var filterKernel = new double[kernel.Length];
+                var filterKernel = new double[kernel.Length];
                 var mrFilterKernel = new double[len];
 
                 for (var j = 0; j < len; j++)
@@ -41,7 +51,7 @@ namespace RX_SSDV
 
                     if (kernelPos < kernel.Length)
                     {
-                        //filterKernel[kernelPos] = kernel[kernelPos];
+                        filterKernel[kernelPos] = kernel[kernelPos];
                         mrFilterKernel[j] = kernel[kernelPos];
                     }
                 }
