@@ -41,6 +41,10 @@ namespace RX_SSDV
         private float[] bufferQ;
         private bool isBufferAvalible = false;
 
+        //DEBUG
+        public float Mu => mu;
+        public float Omega => omega;
+
         public ClockRecoveryBlock_MM(float mu, float muGain, float omega, float omegaGain, float omegaLimit, int nFilter, int nTaps)
         {
             this.mu = mu;
@@ -83,6 +87,7 @@ namespace RX_SSDV
 
             ouc = 0;
             inc = 0;
+
             for (; ouc < inputSamplesI.Length && inc < inputSamplesI.Length;)
             {
                 if (inc + pfb.NTaps >= inputSamplesI.Length)

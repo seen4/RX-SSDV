@@ -429,7 +429,8 @@ namespace RX_SSDV
                     $"\nOutput FFT[{magnitudeSpectrum.Length}]" +
                     $"\nBandwidth: {bandwidth}kHz, Frequency Shift: {frequencyShift}kHz" +
                     $"\nTime {SampleSource.GetFormatedTimeString()}" +
-                    $"\nCostas Loop [freq = {bpskDemod.costasLoop.Phase}, phase = {bpskDemod.costasLoop.Phase}]",
+                    $"\nCostas Loop [freq = {bpskDemod.costasLoop.Phase}, phase = {bpskDemod.costasLoop.Phase}]" +
+                    $"\nClock Sync [mu = {bpskDemod.clockRecovery.Mu}, omega = {bpskDemod.clockRecovery.Omega}]",
                     font, brush, new Point(5, 5));
 
                 //Separator
