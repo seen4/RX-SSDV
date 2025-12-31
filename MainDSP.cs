@@ -124,7 +124,12 @@ namespace RX_SSDV
         private void Init()
         {
             fft = new Fft(FFT_SIZE);
-            bpskDemod = new BPSKDemod(0.005f, 10, 0.001f, 2, 2);
+            //bpskDemod = new BPSKDemod(
+            //    0.005f, 10, 
+            //    0.001f, 2, 2,
+            //    5, 0.007f, 5, 0.01f, 0.05f, 5, 11 * 5 * SampleSource.WaveFormat.SampleRate);
+            bpskDemod = new BPSKDemod();
+            bpskDemod.InitClockSync(5, 0.007f, 5, 0.01f, 0.05f, 5, 11 * 5 * 2);
 
             UpdateBitmap(spectrum.Width);
 
@@ -139,6 +144,7 @@ namespace RX_SSDV
         {
             freqPerSample = waveFormat.SampleRate / FFT_SIZE;
             sampleRate = waveFormat.SampleRate;
+            bpskDemod.clockRecovery.UpdatePFB(sampleRate, 11 * 5 * sampleRate);
         }
 
         private void UpdateBitmap(int width)
