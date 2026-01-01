@@ -26,18 +26,18 @@ namespace RX_SSDV
 
         public BPSKDemod()
         {
-            InitCostas(0.005f, 10);
+            InitCostas(0.05f, 10);
             InitEqualizer(0.05f, 2, 2);
-            InitClockSync(5, 0.007f, MainDSP.SamplePerSymbol, 0.01f, 0.05f, 5, 11 * 5 * MainDSP.SamplePerSymbol);
+            InitClockSync(5, 0.1621256f, MainDSP.SamplePerSymbol, 0.0072956f, 0.05f, 8, 128 * 8);
         }
 
         public BPSKDemod(int arrSize)
         {
             CheckProcessOutputArr(arrSize);
 
-            InitCostas(0.005f, 10);
+            InitCostas(0.05f, 10);
             InitEqualizer(0.05f, 2, 2);
-            InitClockSync(5, 0.007f, MainDSP.SamplePerSymbol, 0.01f, 0.05f, 5, 11 * 5 * MainDSP.SamplePerSymbol);
+            InitClockSync(5, 0.1621256f, MainDSP.SamplePerSymbol, 0.0072956f, 0.05f, 8, 128 * 8);
         }
 
         public BPSKDemod(float costasBw, float costasFreqLimit, 

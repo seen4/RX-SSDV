@@ -1,5 +1,6 @@
 ﻿using NWaves.Filters.Base;
 using NWaves.Utils;
+using NWaves.Windows;
 using RX_SSDV.Utils;
 using System;
 using System.Collections.Generic;
@@ -61,7 +62,8 @@ namespace RX_SSDV
 
         public void UpdatePFB(int nFilt, int nTaps)
         {
-            pfb = new PolyphaseFilterBank(RootRaisedCosine(16, nFilt * nTaps, 1, 0.35, nTaps), nFilt);
+            //pfb = new PolyphaseFilterBank(RootRaisedCosine(16, nFilt * nTaps, 1, 0.35, nTaps), nFilt);
+            pfb = new PolyphaseFilterBank(WindowedSinc(nFilt * 128, Math.PI / nFilt, nFilt), nFilt);
             UpdateBuffer(pfb.NTaps - 1);
         }
 
@@ -211,6 +213,25 @@ namespace RX_SSDV
         public int CalcOutputSize(int inputSize)
         {
             return (int)((float)inputSize / omega) + 1;
+        }
+
+        private double[] WindowedSinc(int nFilt, double alpha, double norm)
+        {
+            double[] resampTaps = new double[nFilt];
+            double half = alpha / 2;
+            double corr = norm * omega / PI;
+            for(int i = 0; i < nFilt; i++)
+            {
+                double t = i - half + 0.5;
+                resampTaps[i] = Sinc(t * alpha) * corr;
+            }
+            resampTaps.ApplyWindow(WindowType.Blackman);
+            return resampTaps;
+        }
+
+        private double Sinc(double x)
+        {
+            return x == 0 ? 1 : Sin(x) / x;
         }
 
         public static double[] RootRaisedCosine(double gain, double sampling_freq, double symbol_rate, double alpha, int ntaps)

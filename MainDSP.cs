@@ -130,15 +130,20 @@ namespace RX_SSDV
             Init();
         }
 
+        /// <summary>
+        /// Init <see cref="MainDSP"/>
+        /// </summary>
         private void Init()
         {
             fft = new Fft(FFT_SIZE);
-            //bpskDemod = new BPSKDemod(
-            //    0.005f, 10, 
-            //    0.001f, 2, 2,
-            //    5, 0.007f, 5, 0.01f, 0.05f, 5, 11 * 5 * SampleSource.WaveFormat.SampleRate);
+            /*
+            bpskDemod = new BPSKDemod(
+                0.005f, 10, 
+                0.001f, 2, 2,
+                5, 0.007f, 5, 0.01f, 0.05f, 5, 11 * 5 * SampleSource.WaveFormat.SampleRate);
+            */
             bpskDemod = new BPSKDemod();
-            bpskDemod.InitClockSync(5, 0.01f, 5, 0.01f, 0.05f, 5, 11 * 5 * samplesPerSymbol);
+            bpskDemod.InitClockSync(5, 0.1621256f, SamplePerSymbol, 0.0072956f, 0.05f, 8, 128 * 8);
 
             UpdateBitmap(spectrum.Width);
 
@@ -148,7 +153,11 @@ namespace RX_SSDV
 
             StartSpectrum();
         }
-        
+
+        /// <summary>
+        /// Get samples per symbol
+        /// </summary>
+        /// <returns>Samples per symbol</returns>
         public static int GetSPS()
         {
             int sps = sampleRate / symobolRate;
@@ -156,14 +165,16 @@ namespace RX_SSDV
             return sps;
         }
 
-        public void OnSourceChange(WaveFormat waveFormat)
+        //在采样源改变时被调用
+        private void OnSourceChange(WaveFormat waveFormat)
         {
             freqPerSample = waveFormat.SampleRate / FFT_SIZE;
             sampleRate = waveFormat.SampleRate;
-            bpskDemod.clockRecovery.UpdatePFB(5, 11 * 5 * GetSPS());
+            //bpskDemod.clockRecovery.UpdatePFB(8, 128 * 8);
             //bpskDemod.equalizer.SamplesPerSymbol = samplesPerSymbol;
         }
 
+        //更新频谱每行的bitmap
         private void UpdateBitmap(int width)
         {
             spectrumCacheBitmap = new Bitmap(width, 1);
@@ -174,6 +185,9 @@ namespace RX_SSDV
             }
         }
 
+        /// <summary>
+        /// Update filter.
+        /// </summary>
         public void UpdateFilter()
         {
             if (!enableFilter)
@@ -206,6 +220,9 @@ namespace RX_SSDV
             }
         }
 
+        /// <summary>
+        /// Start all graphic drawing.
+        /// </summary>
         private void StartSpectrum()
         {
             if(!isDrawerOnline)
@@ -233,6 +250,11 @@ namespace RX_SSDV
             }
         }
 
+        /// <summary>
+        /// Process input samples
+        /// </summary>
+        /// <param name="samplesReal">Input sample I(Real)</param>
+        /// <param name="samplesImag">Input sample Q(Imag)</param>
         public void ProcessData(float[] samplesReal, float[] samplesImag)
         {
             filteredSamplesI = samplesReal;
@@ -262,6 +284,11 @@ namespace RX_SSDV
             //}
         }
 
+        /// <summary>
+        /// Process BPSK.
+        /// </summary>
+        /// <param name="realSignal">Input sample I(Real)</param>
+        /// <param name="imagSignal">Input sample Q(Imag)</param>
         public void ProcessBPSK(float[] realSignal, float[] imagSignal)
         {
             //float[] outRealSignal = new float[realSignal.Length];
@@ -275,6 +302,11 @@ namespace RX_SSDV
             //UpdateConstellation(demodOutputI, demodOutputQ);
         }
 
+        /// <summary>
+        /// Process filter.
+        /// </summary>
+        /// <param name="realSignal">Input sample I(Real)</param>
+        /// <param name="imagSignal">Input sample Q(Imag)</param>
         public void ProcessFilter(float[] realSignal, float[] imagSignal)
         {
             if(ArrayUtil.CheckNeedUpdate(filteredSamplesI, realSignal.Length))
@@ -299,6 +331,11 @@ namespace RX_SSDV
             }
         }
 
+        /// <summary>
+        /// Process spectrum.
+        /// </summary>
+        /// <param name="realSignal">Input sample I(Real)</param>
+        /// <param name="imagSignal">Input sample Q(Imag)</param>
         public void ProcessSpectrum(float[] realSignal, float[] imagSignal)
         {
             //FFT
