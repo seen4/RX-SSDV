@@ -28,7 +28,7 @@ namespace RX_SSDV
         {
             InitCostas(0.05f, 10);
             InitEqualizer(0.05f, 2, 2);
-            InitClockSync(5, 0.1621256f, MainDSP.SamplePerSymbol, 0.0072956f, 0.05f, 8, 128 * 8);
+            InitClockSync(5, 0.75f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f, 128, 128 * 128);
         }
 
         public BPSKDemod(int arrSize)
@@ -37,7 +37,7 @@ namespace RX_SSDV
 
             InitCostas(0.05f, 10);
             InitEqualizer(0.05f, 2, 2);
-            InitClockSync(5, 0.1621256f, MainDSP.SamplePerSymbol, 0.0072956f, 0.05f, 8, 128 * 8);
+            InitClockSync(5, 0.75f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f, 128, 128 * 128);
         }
 
         public BPSKDemod(float costasBw, float costasFreqLimit, 
@@ -89,15 +89,18 @@ namespace RX_SSDV
 
             ProcessCostas(realSignal, imagSignal, outCostasI, outCostasQ);
 
+            //outCostasI.FastCopyTo(outReal, outCostasI.Length);
+            //outCostasQ.FastCopyTo(outImag, outCostasQ.Length);
+
             ProcessClockSync(outCostasI, outCostasQ, outClockSyncI, outClockSyncQ);
 
-            //outClockSyncI.FastCopyTo(outReal, outClockSyncI.Length);
-            //outClockSyncQ.FastCopyTo(outImag, outClockSyncQ.Length);
+            outClockSyncI.FastCopyTo(outReal, outClockSyncI.Length);
+            outClockSyncQ.FastCopyTo(outImag, outClockSyncQ.Length);
 
-            ProcessEqualizer(outClockSyncI, outClockSyncQ, outEqualizerI, outEqualizerQ);
+            //ProcessEqualizer(outClockSyncI, outClockSyncQ, outEqualizerI, outEqualizerQ);
 
-            outEqualizerI.FastCopyTo(outReal, outEqualizerI.Length);
-            outEqualizerQ.FastCopyTo(outImag, outEqualizerQ.Length);
+            //outEqualizerI.FastCopyTo(outReal, outEqualizerI.Length);
+            //outEqualizerQ.FastCopyTo(outImag, outEqualizerQ.Length);
 
             //if (useEqualizerCut)
             //{

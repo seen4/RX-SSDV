@@ -24,14 +24,14 @@
                         </Canvas>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Top" Grid.Row="1">
                             <Canvas Margin="10,0,0,0">
-                                <Label Content="PM" FontSize="10"/>
-                                <Canvas Margin="0,20,0,0" Name="pm" Width="100" Height="100" Grid.Row ="0" Background="#FFBBBBBB">
-                                    <Image Name="pmDisplay"/>
+                                <Label Content="Constellation(In)" FontSize="10"/>
+                                <Canvas Margin="0,20,0,0" Name="oriCon" Width="100" Height="100" Grid.Row ="0" Background="#FFBBBBBB">
+                                    <Image Name="oriConDisplay"/>
                                 </Canvas>
                             </Canvas>
 
                             <Canvas Margin="110,0,0,0">
-                                <Label Content="Constellation" FontSize="10"/>
+                                <Label Content="Constellation(Out)" FontSize="10"/>
                                 <Canvas Margin="0,20,0,0" Name="constellation" Width="100" Height="100" Grid.Row ="0" Background="#FFBBBBBB">
                                     <Image Name="constellationDisplay"/>
                                 </Canvas>

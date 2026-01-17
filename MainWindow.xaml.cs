@@ -29,6 +29,7 @@ namespace RX_SSDV
 
         public CanvasGraphicDrawer spectrumDrawer;
         public CanvasGraphicDrawer constellationDrawer;
+        public CanvasGraphicDrawer constellationDrawerProcessed;
 
         public Action onSizeChange;
 
@@ -52,14 +53,15 @@ namespace RX_SSDV
 
         private void InitDSP()
         {
-            mainDSP = new MainDSP(spectrumDrawer, constellationDrawer);
+            mainDSP = new MainDSP(spectrumDrawer, constellationDrawer, constellationDrawerProcessed);
             SetDSPArguments();
         }
 
         private void InitDrawer()
         {
             spectrumDrawer = new CanvasGraphicDrawer(590, 387, spectrum, spectrumDisplay);
-            constellationDrawer = new CanvasGraphicDrawer(100, 100, constellation, constellationDisplay);
+            constellationDrawer = new CanvasGraphicDrawer(100, 100, oriCon, oriConDisplay);
+            constellationDrawerProcessed = new CanvasGraphicDrawer(100, 100, constellation, constellationDisplay);
         }
 
         private void SetDSPArguments()

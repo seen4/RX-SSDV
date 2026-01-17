@@ -108,7 +108,7 @@ namespace RX_SSDV
                 if (imu >= pfb.FilterCount)
                     imu = pfb.FilterCount - 1;
 
-                p_0T = Convolution(inputSamplesI, inputSamplesQ, inc, pfb.taps[imu]);
+                p_0T = Convolution(inputSamplesI, inputSamplesQ, inc, pfb.taps[^(imu + 1)]);
                 outputSamplesI[ouc] = (float)p_0T.Real;
                 outputSamplesQ[ouc++] = (float)p_0T.Imaginary;
 
@@ -175,7 +175,7 @@ namespace RX_SSDV
                 float sampleI;
                 float sampleQ;
 
-                if (isBufferAvalible)
+                if (isBufferAvalible && false) //no buffer
                 {
                     int tempIndex = startIndex - pfb.NTaps + 1;
 
@@ -215,12 +215,12 @@ namespace RX_SSDV
             return (int)((float)inputSize / omega) + 1;
         }
 
-        private double[] WindowedSinc(int nFilt, double alpha, double norm)
+        private double[] WindowedSinc(int nTaps, double alpha, double norm)
         {
-            double[] resampTaps = new double[nFilt];
-            double half = alpha / 2;
+            double[] resampTaps = new double[nTaps];
+            double half = nTaps / 2;
             double corr = norm * omega / PI;
-            for(int i = 0; i < nFilt; i++)
+            for(int i = 0; i < nTaps; i++)
             {
                 double t = i - half + 0.5;
                 resampTaps[i] = Sinc(t * alpha) * corr;

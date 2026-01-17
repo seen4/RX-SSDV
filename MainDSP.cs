@@ -20,13 +20,14 @@ namespace RX_SSDV
         /*Base*/
         private static int sampleRate = 48000;
 
-        /*Drawing*/
+        #region Drawing
         private CanvasGraphicDrawer spectrum;
+        private CanvasGraphicDrawer constellationOrigin;
         private CanvasGraphicDrawer constellation;
         private Point[] points;
         private Point[] pointsOfFilterI;
         private Point[] pointsOfFilterQ;
-        private Point[] pointsOfconstellation;
+        //private Point[] pointsOfconstellation;
         private Font font = new Font("Arial", 8);
         private SolidBrush brush = new SolidBrush(Color.Black);
         private SolidBrush bfBrush = new SolidBrush(Color.FromArgb(120, 0, 255, 255));
@@ -37,11 +38,12 @@ namespace RX_SSDV
         public float[] spectrumTempSamplesQ;
         public bool drawerTempLock = false;
         private int currentDrawerTick = 0;
+        #endregion
 
-        /*FFT Spectrum*/
+        #region FFT Spectrum
         public Fft fft;
         public const int FFT_SIZE = 2048;
-        //public const int FFT_MAX = 120;
+        //public const int FFT_MAX = 120; //TODO: complete this work.
         //public const int FFT_MIN = 0;
         public const int FFT_POS = 100;
         public const int FFT_RANGE = -1;//2048
@@ -53,8 +55,9 @@ namespace RX_SSDV
         private float[] fftReal;
         private float[] fftImag;
         double[] magnitudeSpectrum;
+        #endregion
 
-        /*Filter*/
+        #region Filter
         public bool EnableFilter
         {
             get
@@ -77,10 +80,11 @@ namespace RX_SSDV
         public const int BP_ORDER = 130;
         private float[] filteredSamplesI;
         private float[] filteredSamplesQ;
+        #endregion
 
-        /*SSDV Process*/
+        #region SSDV Process
         public static int symobolRate = 9600;
-        private static int samplesPerSymbol = 5;
+        //private static int samplesPerSymbol = 5;
         public static int SamplePerSymbol
         {
             get
@@ -101,8 +105,8 @@ namespace RX_SSDV
             }
         }
         private bool enableProcess = false;
-        /*BPSK Demod*/
-        //public CostasLoop costasLoop;
+
+        //BPSK Demod
         public BPSKDemod bpskDemod;
         private float[] demodOutputI;
         private float[] demodOutputQ;
@@ -117,13 +121,15 @@ namespace RX_SSDV
                 constellationMultiply = value;
             }
         }
-        private int constellationStepsize = 10;
+        private int constellationStepsize = 1;
         private float constellationMultiply = 100;
+        #endregion
 
-        public MainDSP(CanvasGraphicDrawer spectrumArea, CanvasGraphicDrawer constellationArea)
+        public MainDSP(CanvasGraphicDrawer spectrumArea, CanvasGraphicDrawer constellationAreaOrigin, CanvasGraphicDrawer clonstellationAreaProcessed)
         {
             spectrum = spectrumArea;
-            constellation = constellationArea;
+            constellationOrigin = constellationAreaOrigin;
+            constellation = clonstellationAreaProcessed;
 
             //int spectrumLength = SampleSource.WAV_BUFFER_SIZE;
 
@@ -143,7 +149,7 @@ namespace RX_SSDV
                 5, 0.007f, 5, 0.01f, 0.05f, 5, 11 * 5 * SampleSource.WaveFormat.SampleRate);
             */
             bpskDemod = new BPSKDemod();
-            bpskDemod.InitClockSync(5, 0.1621256f, SamplePerSymbol, 0.0072956f, 0.05f, 8, 128 * 8);
+            bpskDemod.InitClockSync(5, 0.75f, SamplePerSymbol, 0.75f * 0.75f, 0.05f, 128, 128 * 128);
 
             UpdateBitmap(spectrum.Width);
 
@@ -161,7 +167,7 @@ namespace RX_SSDV
         public static int GetSPS()
         {
             int sps = sampleRate / symobolRate;
-            samplesPerSymbol = sps;
+            //samplesPerSymbol = sps;
             return sps;
         }
 
@@ -231,6 +237,9 @@ namespace RX_SSDV
 
                 Task.Run(() =>
                 {
+                    //Origin samples buffer
+                    float[] bufferI = new float[1], bufferQ = new float[1];
+
                     while(isDrawerOnline)
                     {
                         if (currentDrawerTick < spectrumPeriod)
@@ -240,10 +249,23 @@ namespace RX_SSDV
                         }
                         else if (currentDrawerTick >= spectrumPeriod && !drawerTempLock && drawerUpdateFlag)
                         {
+                            //Before 'ProcessSpectrum', spectrumTempSamplesI/Q just are origin samples.
+                            if (ArrayUtil.CheckNeedUpdate(bufferI, spectrumTempSamplesI.Length) ||
+                                ArrayUtil.CheckNeedUpdate(bufferI, spectrumTempSamplesI.Length))
+                            {
+                                bufferI = new float[spectrumTempSamplesI.Length];
+                                bufferQ = new float[spectrumTempSamplesQ.Length];
+                            }
+                            spectrumTempSamplesI.FastCopyTo(bufferI, spectrumTempSamplesI.Length);
+                            spectrumTempSamplesQ.FastCopyTo(bufferQ, spectrumTempSamplesQ.Length);
+
+                            //Reset drawer flag/ticker
                             drawerUpdateFlag = false;
                             currentDrawerTick = 0;
+
+                            //DSP
                             ProcessSpectrum(spectrumTempSamplesI, spectrumTempSamplesQ);
-                            UpdateConstellation(demodOutputI, demodOutputQ);
+                            UpdateConstellation(bufferI, bufferQ, demodOutputI, demodOutputQ);
                         }
                     }
                 });
@@ -257,15 +279,20 @@ namespace RX_SSDV
         /// <param name="samplesImag">Input sample Q(Imag)</param>
         public void ProcessData(float[] samplesReal, float[] samplesImag)
         {
+            //Filter
             filteredSamplesI = samplesReal;
             filteredSamplesQ = samplesImag;
             if(enableFilter)
                 ProcessFilter(samplesReal, samplesImag);
 
+            //Lock drawer to aviod unexpected read
             drawerTempLock = true;
+
+            //BPSK
             if (enableProcess)
                 ProcessBPSK(filteredSamplesI, filteredSamplesQ);
 
+            //Prepare data for drawer
             if (spectrumTempSamplesI == null || spectrumTempSamplesQ == null)
             {
                 spectrumTempSamplesI = new float[samplesReal.Length];
@@ -273,15 +300,10 @@ namespace RX_SSDV
             }
             samplesReal.FastCopyTo(spectrumTempSamplesI, samplesReal.Length);
             samplesImag.FastCopyTo(spectrumTempSamplesQ, samplesImag.Length);
+
+            //Unlock drawer and let it update
             drawerTempLock = false;
             drawerUpdateFlag = true;
-
-            //currentSpectrumTick++;
-            //if (currentSpectrumTick >= spectrumPeriod)
-            //{
-            //    currentSpectrumTick = 0;
-            //    ProcessSpectrum(samplesReal, samplesImag);
-            //}
         }
 
         /// <summary>
@@ -291,15 +313,9 @@ namespace RX_SSDV
         /// <param name="imagSignal">Input sample Q(Imag)</param>
         public void ProcessBPSK(float[] realSignal, float[] imagSignal)
         {
-            //float[] outRealSignal = new float[realSignal.Length];
-            //float[] outImagSignal = new float[imagSignal.Length];
-            //costasLoop.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
-
             CheckBPSKOutputAvalible(realSignal.Length);
 
             bpskDemod.Process(realSignal, imagSignal, demodOutputI, demodOutputQ);
-
-            //UpdateConstellation(demodOutputI, demodOutputQ);
         }
 
         /// <summary>
@@ -309,6 +325,7 @@ namespace RX_SSDV
         /// <param name="imagSignal">Input sample Q(Imag)</param>
         public void ProcessFilter(float[] realSignal, float[] imagSignal)
         {
+            //Check for output array
             if(ArrayUtil.CheckNeedUpdate(filteredSamplesI, realSignal.Length))
                 filteredSamplesI = new float[realSignal.Length];
             if(ArrayUtil.CheckNeedUpdate(filteredSamplesQ, imagSignal.Length))
@@ -358,6 +375,7 @@ namespace RX_SSDV
                 if(ArrayUtil.CheckNeedUpdate(magnitudeSpectrum, realSignal.Length))
                     magnitudeSpectrum = new double[realSignal.Length];
 
+                //Positive/negative freq of magnitude spectrum
                 for (int i = 0, j = tempSpectrum.Length / 2; i < magnitudeSpectrum.Length; i++, j++)
                 {
                     if (j > tempSpectrum.Length - 1)
@@ -384,9 +402,12 @@ namespace RX_SSDV
             }
         }
 
-        private void UpdateConstellation(float[] samplesReal, float[] samplesImag)
+        private void UpdateConstellation(float[] samplesReal, float[] samplesImag, float[] samplesRealDemod, float[] samplesImagDemod)
         {
-            if (samplesReal.Length != samplesImag.Length)
+            if (samplesReal == null || samplesImag == null || samplesReal.Length != samplesImag.Length)
+                return;
+
+            else if (samplesRealDemod == null || samplesImagDemod == null || samplesRealDemod.Length != samplesImagDemod.Length)
                 return;
 
             //int sizeOfPointArr = (int)(1f * samplesReal.Length / constellationStepsize) + 1;
@@ -401,12 +422,22 @@ namespace RX_SSDV
             //    pointsOfconstellation[j] = new Point((int)(samplesReal[i] * constellationMultiply), (int)(samplesImag[i] * constellationMultiply));
             //}
 
-            constellation.Draw((graphics) =>
+            constellationOrigin.Draw((graphics) =>
             {
                 for (int i = 0; i < samplesReal.Length; i += constellationStepsize)
                 {
                     int x = (int)(samplesReal[i] * constellationMultiply) + 50;
                     int y = (int)(samplesImag[i] * constellationMultiply) + 50;
+                    graphics.DrawRectangle(Pens.Green, x, y, 1, 1);
+                }
+            });
+
+            constellation.Draw((graphics) =>
+            {
+                for (int i = 0; i < samplesRealDemod.Length; i += constellationStepsize)
+                {
+                    int x = (int)(samplesRealDemod[i] * constellationMultiply) + 50;
+                    int y = (int)(samplesImagDemod[i] * constellationMultiply) + 50;
                     graphics.DrawRectangle(Pens.Green, x, y, 1, 1);
                 }
             });
