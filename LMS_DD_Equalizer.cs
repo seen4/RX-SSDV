@@ -7,7 +7,7 @@ using System.Reflection;
 
 namespace RX_SSDV
 {
-    public class LMS_DD_Equalizer : ComplexFirFilter
+    public class LMS_DD_Equalizer : ComplexFirFilter, IDspBlock
     {
         private float mu;
         public float Gain => mu;
@@ -50,15 +50,12 @@ namespace RX_SSDV
         /// <param name="inputQ">Input imag samples.</param>
         /// <param name="outputI">Output real samples.</param>
         /// <param name="outputQ">Output imag samples.</param>
-        /// <returns>Length of output</returns>
-        public int Process(float[] inputI, float[] inputQ, float[] outputI, float[] outputQ)
+        public void Process(float[] inputI, float[] inputQ, float[] outputI, float[] outputQ)
         {
-            int outputLength = -1;
             for(int i = 0, j = 0; i < outputI.Length; i++, j += samplesPerSymbol)
             {
                 if(j >= inputI.Length)
                 {
-                    outputLength = i + 1;
                     break;
                 }
                 (float, float) filterOutput = Process(inputI[j], inputQ[j]);
@@ -80,14 +77,12 @@ namespace RX_SSDV
                     _bQ[k] += deltaQ;
                     _bQ[_kernelSize + k] += deltaQ;
 
-                    //if (sampleI > 100)
+                    //if (i > 189)
                     //{
                     //    int a = 0;
                     //}
                 }
             }
-
-            return outputLength;
         }
 
         private Complex CalcTap(Complex input, Complex d_error)
@@ -102,7 +97,7 @@ namespace RX_SSDV
         /// <returns>Calculated error.</returns>
         public Complex CalcError(Complex sample)
         {
-            int decision = BPSKDemod.BpskDecisionMaker(sample) == 1 ? 1 : -1;
+            float decision = BPSKDemod.BpskDecisionMaker(sample);
             Complex error = new Complex(decision - sample.Real, -sample.Imaginary);
             return error;
         }

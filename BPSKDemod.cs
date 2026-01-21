@@ -14,6 +14,7 @@ namespace RX_SSDV
         public CostasLoop costasLoop;
         public LMS_DD_Equalizer equalizer;
         public ClockRecoveryBlock_MM clockRecovery;
+        public FeedforwardAGC agc;
 
         private float[] outCostasI;
         private float[] outCostasQ;
@@ -21,37 +22,38 @@ namespace RX_SSDV
         private float[] outEqualizerQ;
         private float[] outClockSyncI;
         private float[] outClockSyncQ;
-        //private float[] cuttedEqualizerI;
-        //private float[] cuttedEqualizerQ;
+        private float[] outAgcI;
+        private float[] outAgcQ;
+
+        private static float imaginaryPoint = 1;
 
         public BPSKDemod()
         {
-            InitCostas(0.05f, 10);
-            InitEqualizer(0.05f, 2, 2);
-            InitClockSync(5, 0.75f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f, 128, 128 * 128);
+            InitModulesDefault();
         }
 
         public BPSKDemod(int arrSize)
         {
             CheckProcessOutputArr(arrSize);
 
-            InitCostas(0.05f, 10);
-            InitEqualizer(0.05f, 2, 2);
-            InitClockSync(5, 0.75f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f, 128, 128 * 128);
+            InitModulesDefault();
         }
 
         public BPSKDemod(float costasBw, float costasFreqLimit, 
             float equalizerGain, int equalizerKernelSize, int equalizerSPS,
-            float clockMu, float clockMuGain, float clockOmega, float clockOmegaGain, float clockOmegaLimit, int clockNFilt, int clockNTaps)
+            float clockMu, float clockMuGain, float clockOmega, float clockOmegaGain, float clockOmegaLimit, int clockNFilt, int clockNTaps,
+            float agcGain, float agcRef)
         {
             InitCostas(costasBw, costasFreqLimit);
             InitEqualizer(equalizerGain, equalizerKernelSize, equalizerSPS);
             InitClockSync(clockMu, clockMuGain, clockOmega, clockOmegaGain, clockOmegaLimit, clockNFilt, clockNTaps);
+            InitAGC(agcGain, agcRef);
         }
 
         public BPSKDemod(float costasBw, float costasFreqLimit,
             float equalizerGain, int equalizerKernelSize, int equalizerSPS,
             float clockMu, float clockMuGain, float clockOmega, float clockOmegaGain, float clockOmegaLimit, int clockNFilt, int clockNTaps,
+            float agcGain, float agcRef,
             int arrSize)
         {
             CheckProcessOutputArr(arrSize);
@@ -59,8 +61,11 @@ namespace RX_SSDV
             InitCostas(costasBw, costasFreqLimit);
             InitEqualizer(equalizerGain, equalizerKernelSize, equalizerSPS);
             InitClockSync(clockMu, clockMuGain, clockOmega, clockOmegaGain, clockOmegaLimit, clockNFilt, clockNTaps);
+            InitAGC(agcGain, agcRef);
         }
 
+
+        #region Module Define
         public void InitCostas(float bw, float freqLimit)
         {
             costasLoop = new CostasLoop(bw, freqLimit);
@@ -76,6 +81,20 @@ namespace RX_SSDV
             clockRecovery = new ClockRecoveryBlock_MM(mu, muGain, omega, omegaGain, omegaLimit, nFilt, nTaps);
         }
 
+        public void InitAGC(float gain, float reference)
+        {
+            agc = new FeedforwardAGC(gain, reference);
+        }
+
+        public void InitModulesDefault()
+        {
+            InitCostas(0.05f, 10);
+            InitEqualizer(0.05f, 2, 2);
+            InitClockSync(5, 0.75f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f, 128, 128 * 128);
+            InitAGC(1, 1);
+        }
+        #endregion
+
         /// <summary>
         /// Process BPSK demodulation.
         /// </summary>
@@ -83,7 +102,9 @@ namespace RX_SSDV
         /// <param name="imagSignal">Input signal Q(Imag)</param>
         /// <param name="outReal">Output signal I(Real)</param>
         /// <param name="outImag">Output signal Q(Imag)</param>
-        public void Process(float[] realSignal, float[] imagSignal, float[] outReal, float[] outImag)
+        /// <param name="outputCount">Output array count</param>
+        /// <param name="cutArray">Cut output array</param>
+        public void Process(float[] realSignal, float[] imagSignal, float[] outReal, float[] outImag, out int outputCount, bool cutArray = false)
         {
             CheckProcessOutputArr(realSignal.Length);
 
@@ -92,34 +113,24 @@ namespace RX_SSDV
             //outCostasI.FastCopyTo(outReal, outCostasI.Length);
             //outCostasQ.FastCopyTo(outImag, outCostasQ.Length);
 
-            ProcessClockSync(outCostasI, outCostasQ, outClockSyncI, outClockSyncQ);
+            outputCount = ProcessClockSync(outCostasI, outCostasQ, outClockSyncI, outClockSyncQ);
 
-            outClockSyncI.FastCopyTo(outReal, outClockSyncI.Length);
-            outClockSyncQ.FastCopyTo(outImag, outClockSyncQ.Length);
+            ProcessAGC(outClockSyncI, outClockSyncQ, outAgcI, outAgcQ);
+            //outAgcI.FastCopyTo(outReal, outAgcI.Length);
+            //outAgcQ.FastCopyTo(outImag, outAgcQ.Length);
 
-            //ProcessEqualizer(outClockSyncI, outClockSyncQ, outEqualizerI, outEqualizerQ);
+            ProcessEqualizer(outAgcI, outAgcQ, outEqualizerI, outEqualizerQ);
 
-            //outEqualizerI.FastCopyTo(outReal, outEqualizerI.Length);
-            //outEqualizerQ.FastCopyTo(outImag, outEqualizerQ.Length);
-
-            //if (useEqualizerCut)
-            //{
-            //    //float[] cuttedEqualizerI = new float[equalizerOutputLength];
-            //    //float[] cuttedEqualizerQ = new float[equalizerOutputLength];
-
-            //    CheckEqualizerCutArr(equalizerOutputLength);
-
-            //    outEqualizerI.FastCopyTo(cuttedEqualizerI, equalizerOutputLength);
-            //    outEqualizerQ.FastCopyTo(cuttedEqualizerQ, equalizerOutputLength);
-
-            //    outReal = cuttedEqualizerI;
-            //    outImag = cuttedEqualizerQ;
-
-            //    return;
-            //}
-
-            //outReal = outEqualizerI;
-            //outImag = outEqualizerQ;
+            if (cutArray)
+            {
+                outEqualizerI.FastCopyTo(outReal, outputCount);
+                outEqualizerQ.FastCopyTo(outImag, outputCount);
+            }
+            else
+            {
+                outEqualizerI.FastCopyTo(outReal, outEqualizerI.Length);
+                outEqualizerQ.FastCopyTo(outImag, outEqualizerQ.Length);
+            }
         }
 
         /// <summary>
@@ -143,11 +154,12 @@ namespace RX_SSDV
         /// <param name="imagSignal">Input signal Q(Imag)</param>
         /// <param name="outRealSignal">Output signal I(Real)</param>
         /// <param name="outImagSignal">Output signal Q(Imag)</param>
-        public void ProcessClockSync(float[] realSignal, float[] imagSignal, float[] outRealSignal, float[] outImagSignal)
+        /// <returns>Output samples array count</returns>
+        public int ProcessClockSync(float[] realSignal, float[] imagSignal, float[] outRealSignal, float[] outImagSignal)
         {
             if (clockRecovery == null)
                 throw new NullReferenceException("Clock recovery block not initialized");
-            clockRecovery.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
+            return clockRecovery.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
         }
 
         /// <summary>
@@ -158,11 +170,66 @@ namespace RX_SSDV
         /// <param name="outRealSignal">Output signal I(Real)</param>
         /// <param name="outImagSignal">Output signal Q(Imag)</param>
         /// <returns>Equalizer output array size</returns>
-        public int ProcessEqualizer(float[] realSignal, float[] imagSignal, float[] outRealSignal, float[] outImagSignal)
+        public void ProcessEqualizer(float[] realSignal, float[] imagSignal, float[] outRealSignal, float[] outImagSignal)
         {
             if (equalizer == null)
                 throw new NullReferenceException("LMS equalizer not initialized");
-            return equalizer.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
+            equalizer.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
+        }
+
+        /// <summary>
+        /// Process AGC.
+        /// </summary>
+        /// <param name="realSignal">Input signal I(Real)</param>
+        /// <param name="imagSignal">Input signal Q(Imag)</param>
+        /// <param name="outRealSignal">Output signal I(Real)</param>
+        /// <param name="outImagSignal">Output signal Q(Imag)</param>
+        public void ProcessAGC(float[] realSignal, float[] imagSignal, float[] outRealSignal, float[] outImagSignal)
+        {
+            if(agc == null)
+                throw new NullReferenceException("Feedforward AGC not initialized");
+            agc.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
+        }
+
+        public float CalcAvgMagnitude(float[] samplesI, float[] samplesQ)
+        {
+            float positiveAvg = 0;
+            float negativeAvg = 0;
+            for (int i = 0; i < samplesI.Length; i++)
+            {
+                float sampleI = samplesI[i];
+                float sampleQ = samplesQ[i];
+                if (sampleI >= 0)
+                {
+                    positiveAvg += sampleI;
+                }
+                else
+                {
+                    negativeAvg += sampleQ;
+                }
+            }
+
+            positiveAvg /= samplesI.Length;
+            negativeAvg /= samplesQ.Length;
+
+            return (positiveAvg - negativeAvg) / 2;
+        }
+
+        public void NormalizeSignal(float[] channelI, float[] channelQ)
+        {
+            if (channelI.Length != channelQ.Length)
+                return;
+
+            for(int i = 0; i < channelI.Length; i++)
+            {
+                float sampleI = channelI[i];
+                float sampleQ = channelQ[i];
+                float magnitude = MathF.Sqrt(sampleI * sampleI + sampleQ * sampleQ);
+                if (magnitude == 0)
+                    continue;
+                channelI[i] = sampleI / magnitude;
+                channelQ[i] = sampleQ / magnitude;
+            }
         }
 
         /// <summary>
@@ -198,6 +265,12 @@ namespace RX_SSDV
                 outEqualizerI = new float[arrSize];
                 outEqualizerQ = new float[arrSize];
             }
+
+            if (ArrayUtil.CheckNeedUpdate(outAgcI, arrSize) || ArrayUtil.CheckNeedUpdate(outAgcQ, arrSize))
+            {
+                outAgcI = new float[arrSize];
+                outAgcQ = new float[arrSize];
+            }
         }
 
         //public void CheckEqualizerCutArr(int arrSize)
@@ -214,9 +287,10 @@ namespace RX_SSDV
         /// </summary>
         /// <param name="sample">The complex sample.</param>
         /// <returns>Decision</returns>
-        public static int BpskDecisionMaker(Complex sample)
+        public static float BpskDecisionMaker(Complex sample)
         {
-            return sample.Real > 0 ? 1 : 0;
+            //return sample.Real > 0 ? 1: 0;
+            return sample.Real > 0 ? 1 * imaginaryPoint : -1 * imaginaryPoint;
         }
 
         /// <summary>
@@ -224,9 +298,10 @@ namespace RX_SSDV
         /// </summary>
         /// <param name="sample">The real part of complex sample, or I channel of the signal.</param>
         /// <returns>Decision</returns>
-        public static int BpskDecisionMaker(float sample)
+        public static float BpskDecisionMaker(float sample)
         {
-            return sample > 0 ? 1 : 0;
+            //return sample > 0 ? 1 : 0;
+            return sample > 0 ? 1 * imaginaryPoint : -1 * imaginaryPoint;
         }
     }
 }

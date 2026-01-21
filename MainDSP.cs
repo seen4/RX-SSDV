@@ -315,7 +315,8 @@ namespace RX_SSDV
         {
             CheckBPSKOutputAvalible(realSignal.Length);
 
-            bpskDemod.Process(realSignal, imagSignal, demodOutputI, demodOutputQ);
+            int outArrCount;
+            bpskDemod.Process(realSignal, imagSignal, demodOutputI, demodOutputQ, out outArrCount, true);
         }
 
         /// <summary>

@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
-using System.Runtime.Intrinsics;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -40,7 +39,6 @@ namespace RX_SSDV
 
         private float[] bufferI;
         private float[] bufferQ;
-        private bool isBufferAvalible = false;
 
         //DEBUG
         public float Mu => mu;
@@ -58,19 +56,13 @@ namespace RX_SSDV
             omegaLimit = omegaRelativeLimit * omega;
 
             UpdatePFB(nFilter, nTaps);
+            //UpdateBuffer(SampleSource.WAV_BUFFER_SIZE * 2);
         }
 
         public void UpdatePFB(int nFilt, int nTaps)
         {
             //pfb = new PolyphaseFilterBank(RootRaisedCosine(16, nFilt * nTaps, 1, 0.35, nTaps), nFilt);
             pfb = new PolyphaseFilterBank(WindowedSinc(nFilt * 128, Math.PI / nFilt, nFilt), nFilt);
-            UpdateBuffer(pfb.NTaps - 1);
-        }
-
-        private void UpdateBuffer(int bufferSize)
-        {
-            bufferI = new float[bufferSize];
-            bufferQ = new float[bufferSize];
         }
 
         /// <summary>
@@ -80,7 +72,8 @@ namespace RX_SSDV
         /// <param name="inputSamplesQ">Q channel of input samples(Imag part)</param>
         /// <param name="outputSamplesI">I channel of output samples(Real part)</param>
         /// <param name="outputSamplesQ">Q channel of output samples(Imag part)</param>
-        public void Process(float[] inputSamplesI, float[] inputSamplesQ, float[] outputSamplesI, float[] outputSamplesQ)
+        /// <returns>Output samples array size</returns>
+        public int Process(float[] inputSamplesI, float[] inputSamplesQ, float[] outputSamplesI, float[] outputSamplesQ)
         {
             if (inputSamplesI.Length != inputSamplesQ.Length)
                 throw new ArgumentException("inputSamplesI.Length mush equals inputSamplesQ.Length");
@@ -108,7 +101,7 @@ namespace RX_SSDV
                 if (imu >= pfb.FilterCount)
                     imu = pfb.FilterCount - 1;
 
-                p_0T = Convolution(inputSamplesI, inputSamplesQ, inc, pfb.taps[^(imu + 1)]);
+                p_0T = DotProd(inputSamplesI, inputSamplesQ, inc, pfb.taps[^(imu + 1)]);
                 outputSamplesI[ouc] = (float)p_0T.Real;
                 outputSamplesQ[ouc++] = (float)p_0T.Imaginary;
 
@@ -152,51 +145,32 @@ namespace RX_SSDV
                 */
             }
 
-            inputSamplesI.FastCopyTo(bufferI, bufferI.Length - 1, inputSamplesI.Length - bufferI.Length);
-            inputSamplesQ.FastCopyTo(bufferQ, bufferQ.Length - 1, inputSamplesQ.Length - bufferQ.Length);
-            isBufferAvalible = true;
+            //inputSamplesI.FastCopyTo(bufferI, bufferI.Length - 1, inputSamplesI.Length - bufferI.Length);
+            //inputSamplesQ.FastCopyTo(bufferQ, bufferQ.Length - 1, inputSamplesQ.Length - bufferQ.Length);
+            //isBufferAvalible = true;
+
+            return ouc;
         }
 
         /// <summary>
-        /// Perform a convolution once through input samples.
+        /// Perform a dot produce once through input samples.
         /// </summary>
         /// <param name="inputSamplesI">Input samples(Real part)</param>
         /// <param name="inputSamplesQ">Input samples(Imag part)</param>
         /// <param name="startIndex">Start index of input samples</param>
         /// <param name="pfbTaps">Taps for the convolution(form <see cref="PolyphaseFilterBank"/>)</param>
-        /// <returns>Convolved sample</returns>
-        protected Complex Convolution(float[] inputSamplesI, float[] inputSamplesQ, int startIndex, double[] pfbTaps)
+        /// <returns>Dot produce</returns>
+        protected Complex DotProd(float[] inputSamplesI, float[] inputSamplesQ, int startIndex, double[] pfbTaps)
         {
             double sumI = 0;
             double sumQ = 0;
 
             for (int i = 0; i < pfbTaps.Length; i++)
             {
-                float sampleI;
-                float sampleQ;
-
-                if (isBufferAvalible && false) //no buffer
-                {
-                    int tempIndex = startIndex - pfb.NTaps + 1;
-
-                    if (tempIndex + i < 0)
-                    {
-                        int index = startIndex + i;
-                        sampleI = bufferI[index];
-                        sampleQ = bufferQ[index];
-                    }
-                    else
-                    {
-                        int index = tempIndex + i;
-                        sampleI = inputSamplesI[index];
-                        sampleQ = inputSamplesQ[index];
-                    }
-                }
-                else
-                {
-                    sampleI = inputSamplesI[startIndex + i];
-                    sampleQ = inputSamplesQ[startIndex + i];
-                }
+                //float sampleI = bufferI[i];
+                //float sampleQ = bufferQ[i];
+                float sampleI = inputSamplesI[i + startIndex];
+                float sampleQ = inputSamplesQ[i + startIndex];
 
                 sumI += sampleI * pfbTaps[i];
                 sumQ += sampleQ * pfbTaps[i];
@@ -222,7 +196,7 @@ namespace RX_SSDV
             double corr = norm * omega / PI;
             for(int i = 0; i < nTaps; i++)
             {
-                double t = i - half + 0.5;
+                double t = i - half;
                 resampTaps[i] = Sinc(t * alpha) * corr;
             }
             resampTaps.ApplyWindow(WindowType.Blackman);
