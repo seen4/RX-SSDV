@@ -15,7 +15,7 @@ using static System.Math;
 
 namespace RX_SSDV
 {
-    public class ClockRecoveryBlock_MM
+    public class ClockRecoveryBlock_MM : DspBlock
     {
         public PolyphaseFilterBank pfb;
 
@@ -44,7 +44,7 @@ namespace RX_SSDV
         public float Mu => mu;
         public float Omega => omega;
 
-        public ClockRecoveryBlock_MM(float mu, float muGain, float omega, float omegaGain, float omegaLimit, int nFilter, int nTaps)
+        public ClockRecoveryBlock_MM(float mu, float muGain, float omega, float omegaGain, float omegaLimit, int nFilter, int nTaps) : base()
         {
             this.mu = mu;
             this.muGain = muGain;
@@ -75,6 +75,8 @@ namespace RX_SSDV
         /// <returns>Output samples array size</returns>
         public int Process(float[] inputSamplesI, float[] inputSamplesQ, float[] outputSamplesI, float[] outputSamplesQ)
         {
+            base.Process(inputSamplesI, inputSamplesQ, outputSamplesI, outputSamplesQ);
+
             if (inputSamplesI.Length != inputSamplesQ.Length)
                 throw new ArgumentException("inputSamplesI.Length mush equals inputSamplesQ.Length");
 

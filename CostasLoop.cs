@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace RX_SSDV
 {
-    public class CostasLoop : IDspBlock
+    public class CostasLoop : DspBlock
     {
         private float freqLimitMin;
         private float freqLimitMax;

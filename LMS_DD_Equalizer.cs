@@ -7,7 +7,7 @@ using System.Reflection;
 
 namespace RX_SSDV
 {
-    public class LMS_DD_Equalizer : ComplexFirFilter, IDspBlock
+    public class LMS_DD_Equalizer : ComplexFirFilter
     {
         private float mu;
         public float Gain => mu;

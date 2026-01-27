@@ -8,13 +8,13 @@ using System.Threading.Tasks;
 
 namespace RX_SSDV
 {
-    public class FeedforwardAGC : IDspBlock
+    public class FeedforwardAGC : DspBlock
     {
         float gain;
         float dReference;
         int processCount = 16;
 
-        public FeedforwardAGC(float gain, float reference)
+        public FeedforwardAGC(float gain, float reference) : base()
         {
             this.gain = gain;
             dReference = reference;
@@ -25,6 +25,7 @@ namespace RX_SSDV
             this.gain = gain;
             dReference = reference;
             this.processCount = processCount;
+            SetHistory(processCount * 2);
         }
 
         /// <summary>
@@ -49,17 +50,17 @@ namespace RX_SSDV
         /// <param name="real">Real part input sample</param>
         /// <param name="imag">Imag part input sample</param>
         /// <returns>Envelope</returns>
-        public static float Envelope(float real, float imag)
-        {
-            //Approximate sqrt(x^2 + y^2)
-            float rAbs = MathF.Abs(real);
-            float iAbs = MathF.Abs(imag);
+        //public static float Envelope(float real, float imag)
+        //{
+        //    //Approximate sqrt(x^2 + y^2)
+        //    float rAbs = MathF.Abs(real);
+        //    float iAbs = MathF.Abs(imag);
 
-            if (rAbs > iAbs)
-                return rAbs + 0.4f * iAbs;
-            else
-                return iAbs + 0.4f * rAbs;
-        }
+        //    if (rAbs > iAbs)
+        //        return rAbs + 0.4f * iAbs;
+        //    else
+        //        return iAbs + 0.4f * rAbs;
+        //}
 
         /// <summary>
         /// Process signal.
@@ -68,8 +69,9 @@ namespace RX_SSDV
         /// <param name="inputSamplesQ">Input samples(Imag part)</param>
         /// <param name="outputSamplesI">Output samples(Real part)</param>
         /// <param name="outputSamplesQ">Output samples(Imag part)</param>
-        public void Process(float[] inputSamplesI, float[] inputSamplesQ, float[] outputSamplesI, float[] outputSamplesQ)
+        public override void Process(float[] inputSamplesI, float[] inputSamplesQ, float[] outputSamplesI, float[] outputSamplesQ)
         {
+            base.Process(inputSamplesI, inputSamplesQ, outputSamplesI, outputSamplesQ);
             for(int i = 0; i < inputSamplesI.Length; i++)
             {
                 float maxEnv = 1e-4f;
@@ -77,8 +79,8 @@ namespace RX_SSDV
                 {
                     if (i + j > inputSamplesI.Length - 1)
                         break;
-                    
-                    maxEnv = MathF.Max(maxEnv, Envelope(inputSamplesI[i + j], inputSamplesQ[i + j]));
+                    Complex sample = historyBuffer[i + j];
+                    maxEnv = MathF.Max(maxEnv, Envelope(sample));
                 }
                 gain = dReference / maxEnv;
                 outputSamplesI[i] = gain * inputSamplesI[i];

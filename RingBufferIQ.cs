@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Printing;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,6 +21,31 @@ namespace RX_SSDV.Utils
 
         private int bufferSize = 0;
         public int Size => bufferSize;
+
+        public Complex this[int index]
+        {
+            get
+            {
+                int indexOfArr = index + outputIndex;
+                if (indexOfArr < inputIndex)
+                    return new Complex(bufferI[indexOfArr], bufferQ[indexOfArr]);
+                else
+                    throw new IndexOutOfRangeException();
+            }
+            set
+            {
+                int indexOfArr = index + outputIndex;
+                if (indexOfArr < inputIndex)
+                {
+                    float inputI = (float)value.Real;
+                    float inputQ = (float)value.Imaginary;
+                    bufferI[indexOfArr] = inputI;
+                    bufferQ[indexOfArr] = inputQ;
+                }
+                else
+                    throw new IndexOutOfRangeException();
+            }
+        }
 
         public RingBufferIQ(int size)
         {
@@ -51,9 +77,19 @@ namespace RX_SSDV.Utils
                 inputSamplesQ.FastCopyTo(bufferQ, copyLength, remainedSpace, inputIndex);
                 inputIndex += copyLength;
             }
-            availableDataCount += inputLength;
+
+            if(availableDataCount < bufferSize)
+            {
+                availableDataCount += inputLength;
+            }
+
+            if (availableDataCount > bufferSize)
+            {
+                availableDataCount = bufferSize;
+            }
         }
 
+        [Obsolete("Please use RingBufferIQ[index] instead")]
         public void Read(float[] outputI, float[] outputQ, int startIndex = 0, int length = -1)
         {
             if (outputI.Length != outputQ.Length || length < outputI.Length || length > availableDataCount)

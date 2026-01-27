@@ -109,28 +109,29 @@ namespace RX_SSDV
             CheckProcessOutputArr(realSignal.Length);
 
             ProcessCostas(realSignal, imagSignal, outCostasI, outCostasQ);
-
             //outCostasI.FastCopyTo(outReal, outCostasI.Length);
             //outCostasQ.FastCopyTo(outImag, outCostasQ.Length);
 
             outputCount = ProcessClockSync(outCostasI, outCostasQ, outClockSyncI, outClockSyncQ);
+            //outClockSyncI.FastCopyTo(outReal, outClockSyncI.Length);
+            //outClockSyncQ.FastCopyTo(outImag, outClockSyncQ.Length);
 
             ProcessAGC(outClockSyncI, outClockSyncQ, outAgcI, outAgcQ);
-            //outAgcI.FastCopyTo(outReal, outAgcI.Length);
-            //outAgcQ.FastCopyTo(outImag, outAgcQ.Length);
+            outAgcI.FastCopyTo(outReal, outAgcI.Length);
+            outAgcQ.FastCopyTo(outImag, outAgcQ.Length);
 
-            ProcessEqualizer(outAgcI, outAgcQ, outEqualizerI, outEqualizerQ);
+            //ProcessEqualizer(outAgcI, outAgcQ, outEqualizerI, outEqualizerQ);
 
-            if (cutArray)
-            {
-                outEqualizerI.FastCopyTo(outReal, outputCount);
-                outEqualizerQ.FastCopyTo(outImag, outputCount);
-            }
-            else
-            {
-                outEqualizerI.FastCopyTo(outReal, outEqualizerI.Length);
-                outEqualizerQ.FastCopyTo(outImag, outEqualizerQ.Length);
-            }
+            //if (cutArray)
+            //{
+            //    outEqualizerI.FastCopyTo(outReal, outputCount);
+            //    outEqualizerQ.FastCopyTo(outImag, outputCount);
+            //}
+            //else
+            //{
+            //    outEqualizerI.FastCopyTo(outReal, outEqualizerI.Length);
+            //    outEqualizerQ.FastCopyTo(outImag, outEqualizerQ.Length);
+            //}
         }
 
         /// <summary>
