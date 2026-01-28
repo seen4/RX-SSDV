@@ -16,14 +16,11 @@ namespace RX_SSDV
         public ClockRecoveryBlock_MM clockRecovery;
         public FeedforwardAGC agc;
 
-        private float[] outCostasI;
-        private float[] outCostasQ;
-        private float[] outEqualizerI;
-        private float[] outEqualizerQ;
-        private float[] outClockSyncI;
-        private float[] outClockSyncQ;
-        private float[] outAgcI;
-        private float[] outAgcQ;
+        private float[] outBufferI_1;
+        private float[] outBufferQ_1;
+        private float[] outBufferI_2;
+        private float[] outBufferQ_2;
+        //private int bufferId = 1;
 
         private static float imaginaryPoint = 1;
 
@@ -104,92 +101,35 @@ namespace RX_SSDV
         /// <param name="outImag">Output signal Q(Imag)</param>
         /// <param name="outputCount">Output array count</param>
         /// <param name="cutArray">Cut output array</param>
-        public void Process(float[] realSignal, float[] imagSignal, float[] outReal, float[] outImag, out int outputCount, bool cutArray = false)
+        public void Process(float[] realSignal, float[] imagSignal, float[] outReal, float[] outImag, out int outputCount)
         {
             CheckProcessOutputArr(realSignal.Length);
+            CheckBlocks();
 
-            ProcessCostas(realSignal, imagSignal, outCostasI, outCostasQ);
-            //outCostasI.FastCopyTo(outReal, outCostasI.Length);
-            //outCostasQ.FastCopyTo(outImag, outCostasQ.Length);
+            int costasOutputSize = costasLoop.Process(realSignal.Length, realSignal, imagSignal, outBufferI_1, outBufferQ_1);
 
-            outputCount = ProcessClockSync(outCostasI, outCostasQ, outClockSyncI, outClockSyncQ);
-            //outClockSyncI.FastCopyTo(outReal, outClockSyncI.Length);
-            //outClockSyncQ.FastCopyTo(outImag, outClockSyncQ.Length);
+            int clockOutputSize = clockRecovery.Process(costasOutputSize, outBufferI_1, outBufferQ_1, outBufferI_2, outBufferQ_2);
 
-            ProcessAGC(outClockSyncI, outClockSyncQ, outAgcI, outAgcQ);
-            outAgcI.FastCopyTo(outReal, outAgcI.Length);
-            outAgcQ.FastCopyTo(outImag, outAgcQ.Length);
+            int agcOutputSize = agc.Process(clockOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
+            outputCount = agcOutputSize;
 
-            //ProcessEqualizer(outAgcI, outAgcQ, outEqualizerI, outEqualizerQ);
+            //int equalizerOutputSize = equalizer.Process(agcOutputSize, outBufferI_1, outBufferQ_1, outBufferI_2, outBufferQ_2);
+            //outputCount = equalizerOutputSize;
 
-            //if (cutArray)
-            //{
-            //    outEqualizerI.FastCopyTo(outReal, outputCount);
-            //    outEqualizerQ.FastCopyTo(outImag, outputCount);
-            //}
-            //else
-            //{
-            //    outEqualizerI.FastCopyTo(outReal, outEqualizerI.Length);
-            //    outEqualizerQ.FastCopyTo(outImag, outEqualizerQ.Length);
-            //}
+            outBufferI_1.FastCopyTo(outReal, outputCount);
+            outBufferQ_1.FastCopyTo(outImag, outputCount);
+            //outBufferI_2.FastCopyTo(outReal, outputCount);
+            //outBufferQ_2.FastCopyTo(outImag, outputCount);
         }
 
-        /// <summary>
-        /// Process costas loop.
-        /// </summary>
-        /// <param name="realSignal">Input signal I(Real)</param>
-        /// <param name="imagSignal">Input signal Q(Imag)</param>
-        /// <param name="outRealSignal">Output signal I(Real)</param>
-        /// <param name="outImagSignal">Output signal Q(Imag)</param>
-        public void ProcessCostas(float[] realSignal, float[] imagSignal, float[] outRealSignal, float[] outImagSignal)
+        public void CheckBlocks()
         {
             if (costasLoop == null)
                 throw new NullReferenceException("Costas loop not initialized");
-            costasLoop.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
-        }
-
-        /// <summary>
-        /// Process clock recovery block.
-        /// </summary>
-        /// <param name="realSignal">Input signal I(Real)</param>
-        /// <param name="imagSignal">Input signal Q(Imag)</param>
-        /// <param name="outRealSignal">Output signal I(Real)</param>
-        /// <param name="outImagSignal">Output signal Q(Imag)</param>
-        /// <returns>Output samples array count</returns>
-        public int ProcessClockSync(float[] realSignal, float[] imagSignal, float[] outRealSignal, float[] outImagSignal)
-        {
             if (clockRecovery == null)
                 throw new NullReferenceException("Clock recovery block not initialized");
-            return clockRecovery.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
-        }
-
-        /// <summary>
-        /// Process equalizer.
-        /// </summary>
-        /// <param name="realSignal">Input signal I(Real)</param>
-        /// <param name="imagSignal">Input signal Q(Imag)</param>
-        /// <param name="outRealSignal">Output signal I(Real)</param>
-        /// <param name="outImagSignal">Output signal Q(Imag)</param>
-        /// <returns>Equalizer output array size</returns>
-        public void ProcessEqualizer(float[] realSignal, float[] imagSignal, float[] outRealSignal, float[] outImagSignal)
-        {
             if (equalizer == null)
                 throw new NullReferenceException("LMS equalizer not initialized");
-            equalizer.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
-        }
-
-        /// <summary>
-        /// Process AGC.
-        /// </summary>
-        /// <param name="realSignal">Input signal I(Real)</param>
-        /// <param name="imagSignal">Input signal Q(Imag)</param>
-        /// <param name="outRealSignal">Output signal I(Real)</param>
-        /// <param name="outImagSignal">Output signal Q(Imag)</param>
-        public void ProcessAGC(float[] realSignal, float[] imagSignal, float[] outRealSignal, float[] outImagSignal)
-        {
-            if(agc == null)
-                throw new NullReferenceException("Feedforward AGC not initialized");
-            agc.Process(realSignal, imagSignal, outRealSignal, outImagSignal);
         }
 
         public float CalcAvgMagnitude(float[] samplesI, float[] samplesQ)
@@ -234,54 +174,23 @@ namespace RX_SSDV
         }
 
         /// <summary>
-        /// Calcucate equalizer output array size.
-        /// </summary>
-        /// <param name="inputSize">Input array size</param>
-        /// <returns>Output array size</returns>
-        public int CalcOutputSize(int inputSize)
-        {
-            return clockRecovery.CalcOutputSize(inputSize);
-        }
-
-        /// <summary>
         /// Check output if arrays avalible, if not, init array(s) by 'arrSize'.
         /// </summary>
         /// <param name="arrSize">Array size</param>
         public void CheckProcessOutputArr(int arrSize)
         {
-            if (ArrayUtil.CheckNeedUpdate(outCostasI, arrSize) || ArrayUtil.CheckNeedUpdate(outCostasQ, arrSize))
+            if (ArrayUtil.CheckNeedUpdate(outBufferI_1, arrSize) || ArrayUtil.CheckNeedUpdate(outBufferQ_1, arrSize))
             {
-                outCostasI = new float[arrSize];
-                outCostasQ = new float[arrSize];
+                outBufferI_1 = new float[arrSize];
+                outBufferQ_1 = new float[arrSize];
             }
 
-            if (ArrayUtil.CheckNeedUpdate(outClockSyncI, arrSize) || ArrayUtil.CheckNeedUpdate(outClockSyncQ, arrSize))
+            if (ArrayUtil.CheckNeedUpdate(outBufferI_2, arrSize) || ArrayUtil.CheckNeedUpdate(outBufferQ_2, arrSize))
             {
-                outClockSyncI = new float[arrSize];
-                outClockSyncQ = new float[arrSize];
-            }
-
-            if (ArrayUtil.CheckNeedUpdate(outEqualizerI, arrSize) || ArrayUtil.CheckNeedUpdate(outEqualizerQ, arrSize))
-            {
-                outEqualizerI = new float[arrSize];
-                outEqualizerQ = new float[arrSize];
-            }
-
-            if (ArrayUtil.CheckNeedUpdate(outAgcI, arrSize) || ArrayUtil.CheckNeedUpdate(outAgcQ, arrSize))
-            {
-                outAgcI = new float[arrSize];
-                outAgcQ = new float[arrSize];
+                outBufferI_2 = new float[arrSize];
+                outBufferQ_2 = new float[arrSize];
             }
         }
-
-        //public void CheckEqualizerCutArr(int arrSize)
-        //{
-        //    if (cuttedEqualizerI == null || cuttedEqualizerQ == null || cuttedEqualizerI.Length != arrSize || cuttedEqualizerQ.Length != arrSize)
-        //    {
-        //        cuttedEqualizerI = new float[arrSize];
-        //        cuttedEqualizerQ = new float[arrSize];
-        //    }
-        //}
 
         /// <summary>
         /// Decision maker of BPSK modulation.

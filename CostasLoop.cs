@@ -40,22 +40,24 @@ namespace RX_SSDV
         }
 
         /// <summary>
-        /// Process samples.
+        /// Process signal.
         /// </summary>
         /// <param name="inputReal">Input real samples</param>
         /// <param name="inputImag">Input imag samples</param>
         /// <param name="outputReal">Output real samples</param>
         /// <param name="outputImag">Output imag samples</param>
-        public void Process(float[] inputReal, float[] inputImag, float[] outputReal, float[] outputImag)
+        public override int Process(int inputSize, float[] inputReal, float[] inputImag, float[] outputReal, float[] outputImag)
         {
+            //Buffer is not necessary.
+            //base.Process(inputReal, inputImag, outputReal, outputImag, inputSize);
+
             if (inputReal.Length != inputImag.Length)
-                return;
+                return 0;
 
-            int sampleLength = inputReal.Length;
-
-            for(int i = 0; i < sampleLength; i++)
+            for(int i = 0; i < inputSize; i++)
             {
                 Complex sample = new Complex(inputReal[i], inputImag[i]);
+                //Complex sample = inputReal[i];
                 Complex outSample = sample * CalcVCO(-phase);
                 outputReal[i] = (float)outSample.Real;
                 outputImag[i] = (float)outSample.Imaginary;
@@ -76,6 +78,9 @@ namespace RX_SSDV
                 //Clamp freq
                 freq = Math.Clamp(freq, freqLimitMin, freqLimitMax);
             }
+
+            //CompleteProcess(inputSize);
+            return inputSize;
         }
 
         /// <summary>

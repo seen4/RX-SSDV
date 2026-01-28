@@ -25,7 +25,7 @@ namespace RX_SSDV
             historyBuffer = new RingBufferIQ(bufferSize);
         }
 
-        public virtual void Process(float[] inputSamplesI, float[] inputSamplesQ, float[] outSamplesI, float[] outSamplesQ)
+        public virtual void Process(float[] inputSamplesI, float[] inputSamplesQ, float[] outSamplesI, float[] outSamplesQ, int inputSize)
         {
             if(inputSamplesI.Length != inputSamplesQ.Length)
             {
@@ -36,7 +36,19 @@ namespace RX_SSDV
                 throw new ArgumentException("outputSamplesI.Length must equals outputSamplesQ.Length");
             }
 
-            historyBuffer.Write(inputSamplesI, inputSamplesQ);
+            historyBuffer.Write(inputSamplesI, inputSamplesQ, inputSize);
+        }
+
+        public virtual int Process(int inputSize, float[] inputSamplesI, float[] inputSamplesQ, float[] outputSamplesI, float[] outputSamplesQ)
+        {
+            Process(inputSamplesI, inputSamplesQ, outputSamplesI, outputSamplesQ, inputSize);
+            CompleteProcess(inputSize);
+            return outputSamplesI.Length;
+        }
+
+        protected void CompleteProcess(int outputSize)
+        {
+            historyBuffer.MoveOutputIndex(outputSize);
         }
     }
 }

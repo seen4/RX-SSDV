@@ -69,23 +69,37 @@ namespace RX_SSDV
         /// <param name="inputSamplesQ">Input samples(Imag part)</param>
         /// <param name="outputSamplesI">Output samples(Real part)</param>
         /// <param name="outputSamplesQ">Output samples(Imag part)</param>
-        public override void Process(float[] inputSamplesI, float[] inputSamplesQ, float[] outputSamplesI, float[] outputSamplesQ)
+        public override int Process(int inputSize, float[] inputSamplesI, float[] inputSamplesQ, float[] outputSamplesI, float[] outputSamplesQ)
         {
-            base.Process(inputSamplesI, inputSamplesQ, outputSamplesI, outputSamplesQ);
-            for(int i = 0; i < inputSamplesI.Length; i++)
+            base.Process(inputSamplesI, inputSamplesQ, outputSamplesI, outputSamplesQ, inputSize);
+            int outputCount = inputSize;
+
+            for(int i = 0; i < inputSize; i++)
             {
                 float maxEnv = 1e-4f;
+
+                // Check whether the remaining sample count is enough.
+                if(i + processCount > historyBuffer.Length) // i + (processCount - 1) > historyBuffer.Length - 1
+                {
+                    outputCount = i + 1;
+                    break;
+                }
+
+                // Calc max envelpoe
                 for (int j = 0; j < processCount; j++)
                 {
-                    if (i + j > inputSamplesI.Length - 1)
-                        break;
                     Complex sample = historyBuffer[i + j];
                     maxEnv = MathF.Max(maxEnv, Envelope(sample));
                 }
+
+                // Calc gain & apply to output
                 gain = dReference / maxEnv;
                 outputSamplesI[i] = gain * inputSamplesI[i];
                 outputSamplesQ[i] = gain * inputSamplesQ[i];
             }
+
+            CompleteProcess(outputCount);
+            return outputCount;
         }
     }
 }

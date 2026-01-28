@@ -1,4 +1,5 @@
 using NWaves.Filters.Base;
+using RX_SSDV.Utils;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -28,6 +29,7 @@ namespace RX_SSDV
         public LMS_DD_Equalizer(IEnumerable<float> kernelI, IEnumerable<float> kernelQ, float gain, int samplesPerSymbol) : base(kernelI, kernelQ)
         {
             SetGain(gain);
+            SetHistory(SampleSource.WAV_BUFFER_SIZE * 2); //Buffer
             this.samplesPerSymbol = samplesPerSymbol;
         }
 
@@ -43,6 +45,38 @@ namespace RX_SSDV
             return equalizer;
         }
 
+        #region Buffer(DspBlock)
+        public RingBufferIQ historyBuffer;
+
+        /// <summary>
+        /// Clear the buffer and allocate new one.
+        /// </summary>
+        /// <param name="bufferSize">New buffer size</param>
+        private void SetHistory(int bufferSize)
+        {
+            historyBuffer = new RingBufferIQ(bufferSize);
+        }
+
+        private void Process(float[] inputSamplesI, float[] inputSamplesQ, float[] outSamplesI, float[] outSamplesQ, int inputSize)
+        {
+            if (inputSamplesI.Length != inputSamplesQ.Length)
+            {
+                throw new ArgumentException("inputSamplesI.Length must equals inputSamplesQ.Length");
+            }
+            if (outSamplesI.Length != outSamplesQ.Length)
+            {
+                throw new ArgumentException("outputSamplesI.Length must equals outputSamplesQ.Length");
+            }
+
+            historyBuffer.Write(inputSamplesI, inputSamplesQ, inputSize);
+        }
+
+        protected void CompleteProcess(int outputSize)
+        {
+            historyBuffer.MoveOutputIndex(outputSize);
+        }
+        #endregion
+
         /// <summary>
         /// Process samples.
         /// </summary>
@@ -50,20 +84,26 @@ namespace RX_SSDV
         /// <param name="inputQ">Input imag samples.</param>
         /// <param name="outputI">Output real samples.</param>
         /// <param name="outputQ">Output imag samples.</param>
-        public void Process(float[] inputI, float[] inputQ, float[] outputI, float[] outputQ)
+        public int Process(int inputSize, float[] inputI, float[] inputQ, float[] outputI, float[] outputQ)
         {
-            for(int i = 0, j = 0; i < outputI.Length; i++, j += samplesPerSymbol)
+            Process(inputI, inputQ, outputI, outputQ, inputSize);
+
+            int outputSize = 0;
+            for (int i = 0, j = 0; i < outputI.Length; i++, j+=samplesPerSymbol)
             {
-                if(j >= inputI.Length)
+                if(j >= historyBuffer.Length)
                 {
                     break;
                 }
-                (float, float) filterOutput = Process(inputI[j], inputQ[j]);
+
+                outputSize++;
+
+                Complex inputSample = historyBuffer[j];
+                (float, float) filterOutput = Process((float)inputSample.Real, (float)inputSample.Imaginary);
 
                 float sampleI = outputI[i] = filterOutput.Item1;
                 float sampleQ = outputQ[i] = filterOutput.Item2;
 
-                Complex inputSample = new Complex(inputI[j], inputQ[j]);
                 Complex sample = new Complex(sampleI, sampleQ);
 
                 Complex error = CalcError(sample);
@@ -83,6 +123,9 @@ namespace RX_SSDV
                     //}
                 }
             }
+
+            CompleteProcess(outputSize);
+            return outputSize;
         }
 
         private Complex CalcTap(Complex input, Complex d_error)

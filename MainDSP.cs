@@ -1,15 +1,8 @@
 ﻿using NAudio.Wave;
 using NWaves.Filters.Base;
-using NWaves.Signals;
-using NWaves.Filters.Fda;
 using NWaves.Transforms;
 using NWaves.Utils;
-using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using System.Numerics;
-using System.Threading.Tasks;
 using MessageBox = System.Windows.MessageBox;
 using RX_SSDV.Utils;
 
@@ -314,9 +307,10 @@ namespace RX_SSDV
         public void ProcessBPSK(float[] realSignal, float[] imagSignal)
         {
             CheckBPSKOutputAvalible(realSignal.Length);
+            ClearBPSKOutputArray();
 
             int outArrCount;
-            bpskDemod.Process(realSignal, imagSignal, demodOutputI, demodOutputQ, out outArrCount, true);
+            bpskDemod.Process(realSignal, imagSignal, demodOutputI, demodOutputQ, out outArrCount);
         }
 
         /// <summary>
@@ -389,6 +383,12 @@ namespace RX_SSDV
 
                 UpdateSpectrum(maxFreq, realSignal.Length, imagSignal.Length);
             }
+        }
+
+        public void ClearBPSKOutputArray()
+        {
+            Array.Clear(demodOutputI, 0, demodOutputI.Length);
+            Array.Clear(demodOutputQ, 0, demodOutputQ.Length);
         }
 
         public void CheckBPSKOutputAvalible(int inputSize)

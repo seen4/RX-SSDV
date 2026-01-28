@@ -66,16 +66,16 @@ namespace RX_SSDV
         }
 
         /// <summary>
-        /// Process one sample.
+        /// Process signal.
         /// </summary>
         /// <param name="inputSamplesI">I channel of input samples(Real part)</param>
         /// <param name="inputSamplesQ">Q channel of input samples(Imag part)</param>
         /// <param name="outputSamplesI">I channel of output samples(Real part)</param>
         /// <param name="outputSamplesQ">Q channel of output samples(Imag part)</param>
         /// <returns>Output samples array size</returns>
-        public int Process(float[] inputSamplesI, float[] inputSamplesQ, float[] outputSamplesI, float[] outputSamplesQ)
+        public override int Process(int inputSize, float[] inputSamplesI, float[] inputSamplesQ, float[] outputSamplesI, float[] outputSamplesQ)
         {
-            base.Process(inputSamplesI, inputSamplesQ, outputSamplesI, outputSamplesQ);
+            base.Process(inputSamplesI, inputSamplesQ, outputSamplesI, outputSamplesQ, inputSize);
 
             if (inputSamplesI.Length != inputSamplesQ.Length)
                 throw new ArgumentException("inputSamplesI.Length mush equals inputSamplesQ.Length");
@@ -85,9 +85,9 @@ namespace RX_SSDV
             ouc = 0;
             inc = 0;
 
-            for (; ouc < inputSamplesI.Length && inc < inputSamplesI.Length;)
+            for (; ouc < outputSamplesI.Length && inc < inputSize;)
             {
-                if (inc + pfb.NTaps >= inputSamplesI.Length)
+                if (inc + pfb.NTaps >= historyBuffer.Length)
                     break;
 
                 // Propagate delay
@@ -103,7 +103,7 @@ namespace RX_SSDV
                 if (imu >= pfb.FilterCount)
                     imu = pfb.FilterCount - 1;
 
-                p_0T = DotProd(inputSamplesI, inputSamplesQ, inc, pfb.taps[^(imu + 1)]);
+                p_0T = DotProd(inc, pfb.taps[^(imu + 1)]);
                 outputSamplesI[ouc] = (float)p_0T.Real;
                 outputSamplesQ[ouc++] = (float)p_0T.Imaginary;
 
@@ -151,18 +151,17 @@ namespace RX_SSDV
             //inputSamplesQ.FastCopyTo(bufferQ, bufferQ.Length - 1, inputSamplesQ.Length - bufferQ.Length);
             //isBufferAvalible = true;
 
+            CompleteProcess(ouc);
             return ouc;
         }
 
         /// <summary>
         /// Perform a dot produce once through input samples.
         /// </summary>
-        /// <param name="inputSamplesI">Input samples(Real part)</param>
-        /// <param name="inputSamplesQ">Input samples(Imag part)</param>
         /// <param name="startIndex">Start index of input samples</param>
         /// <param name="pfbTaps">Taps for the convolution(form <see cref="PolyphaseFilterBank"/>)</param>
         /// <returns>Dot produce</returns>
-        protected Complex DotProd(float[] inputSamplesI, float[] inputSamplesQ, int startIndex, double[] pfbTaps)
+        protected Complex DotProd(int startIndex, double[] pfbTaps)
         {
             double sumI = 0;
             double sumQ = 0;
@@ -171,8 +170,9 @@ namespace RX_SSDV
             {
                 //float sampleI = bufferI[i];
                 //float sampleQ = bufferQ[i];
-                float sampleI = inputSamplesI[i + startIndex];
-                float sampleQ = inputSamplesQ[i + startIndex];
+                Complex sample = historyBuffer[i + startIndex];
+                float sampleI = (float)sample.Real;
+                float sampleQ = (float)sample.Imaginary;
 
                 sumI += sampleI * pfbTaps[i];
                 sumQ += sampleQ * pfbTaps[i];

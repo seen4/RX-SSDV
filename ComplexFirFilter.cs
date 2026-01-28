@@ -54,6 +54,7 @@ namespace NWaves.Filters.Base
         /// Kernel length.
         /// </summary>
         protected int _kernelSize;
+        public int KernelSize => _kernelSize;
 
         /// <summary>
         /// Internal buffer for delay line.(I)

@@ -17,7 +17,7 @@ namespace RX_SSDV.Utils
         private int inputIndex = 0;
         private int outputIndex = 0;
         private int availableDataCount = 0;
-        public int AvailableDataCount => availableDataCount;
+        public int Length => availableDataCount;
 
         private int bufferSize = 0;
         public int Size => bufferSize;
@@ -27,7 +27,10 @@ namespace RX_SSDV.Utils
             get
             {
                 int indexOfArr = index + outputIndex;
-                if (indexOfArr < inputIndex)
+                if (indexOfArr >= bufferSize)
+                    indexOfArr -= bufferSize;
+
+                if (index < availableDataCount)
                     return new Complex(bufferI[indexOfArr], bufferQ[indexOfArr]);
                 else
                     throw new IndexOutOfRangeException();
@@ -35,7 +38,10 @@ namespace RX_SSDV.Utils
             set
             {
                 int indexOfArr = index + outputIndex;
-                if (indexOfArr < inputIndex)
+                if (indexOfArr >= bufferSize)
+                    indexOfArr -= bufferSize;
+
+                if (index < availableDataCount)
                 {
                     float inputI = (float)value.Real;
                     float inputQ = (float)value.Imaginary;
@@ -54,22 +60,51 @@ namespace RX_SSDV.Utils
             bufferQ = new float[bufferSize];
         }
 
-        public void Write(float[] inputSamplesI, float[] inputSamplesQ)
+        public void MoveOutputIndex(int delta)
         {
-            if (inputSamplesI.Length != inputSamplesQ.Length)
-                throw new ArgumentException("inputSamplesI.Length must equals inputSamplesQ.Length");
+            if (delta < 0)
+                throw new ArgumentException("'delta' must greater than zero");
 
-            int remainedSpace = bufferSize - inputIndex;
-            int inputLength = inputSamplesI.Length;
-            if(remainedSpace >= inputLength)
+            outputIndex += delta;
+
+            if (outputIndex > bufferSize - 1)
             {
-                inputSamplesI.FastCopyTo(bufferI, inputSamplesI.Length, 0, inputIndex);
-                inputSamplesQ.FastCopyTo(bufferQ, inputSamplesQ.Length, 0, inputIndex);
-                inputIndex += inputSamplesI.Length;
+                outputIndex -= bufferSize;
+            }
+
+            UpdateDataCount();
+        }
+
+        public void UpdateDataCount()
+        {
+            if(inputIndex >= outputIndex)
+            {
+                availableDataCount = inputIndex - outputIndex + 1;
             }
             else
             {
-                int copyLength = inputSamplesI.Length - remainedSpace;
+                availableDataCount = bufferSize - outputIndex - inputIndex + 1;
+            }
+        }
+
+        public void Write(float[] inputSamplesI, float[] inputSamplesQ, int length)
+        {
+            if (inputSamplesI.Length != inputSamplesQ.Length)
+                throw new ArgumentException("inputSamplesI.Length must equals inputSamplesQ.Length");
+            if (length > inputSamplesI.Length)
+                throw new ArgumentException("The 'length' is to big.");
+
+            int remainedSpace = bufferSize - inputIndex;
+            int inputLength = length;
+            if(remainedSpace >= inputLength)
+            {
+                inputSamplesI.FastCopyTo(bufferI, inputLength, 0, inputIndex);
+                inputSamplesQ.FastCopyTo(bufferQ, inputLength, 0, inputIndex);
+                inputIndex += inputLength;
+            }
+            else
+            {
+                int copyLength = inputLength - remainedSpace;
                 inputSamplesI.FastCopyTo(bufferI, remainedSpace, 0, inputIndex);
                 inputSamplesQ.FastCopyTo(bufferQ, remainedSpace, 0, inputIndex);
                 inputIndex = 0;
@@ -78,6 +113,7 @@ namespace RX_SSDV.Utils
                 inputIndex += copyLength;
             }
 
+            //UpdateDataCount();
             if(availableDataCount < bufferSize)
             {
                 availableDataCount += inputLength;
