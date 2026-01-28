@@ -67,7 +67,7 @@ namespace RX_SSDV.Utils
 
             outputIndex += delta;
 
-            if (outputIndex > bufferSize - 1)
+            if (outputIndex >= bufferSize)
             {
                 outputIndex -= bufferSize;
             }
@@ -83,7 +83,7 @@ namespace RX_SSDV.Utils
             }
             else
             {
-                availableDataCount = bufferSize - outputIndex - inputIndex + 1;
+                availableDataCount = bufferSize - (outputIndex - inputIndex) + 1;
             }
         }
 

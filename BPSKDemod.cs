@@ -110,16 +110,15 @@ namespace RX_SSDV
 
             int clockOutputSize = clockRecovery.Process(costasOutputSize, outBufferI_1, outBufferQ_1, outBufferI_2, outBufferQ_2);
 
-            int agcOutputSize = agc.Process(clockOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
-            outputCount = agcOutputSize;
+            //int agcOutputSize = agc.Process(clockOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
 
             //int equalizerOutputSize = equalizer.Process(agcOutputSize, outBufferI_1, outBufferQ_1, outBufferI_2, outBufferQ_2);
-            //outputCount = equalizerOutputSize;
+            outputCount = clockOutputSize;
 
-            outBufferI_1.FastCopyTo(outReal, outputCount);
-            outBufferQ_1.FastCopyTo(outImag, outputCount);
-            //outBufferI_2.FastCopyTo(outReal, outputCount);
-            //outBufferQ_2.FastCopyTo(outImag, outputCount);
+            //outBufferI_1.FastCopyTo(outReal, outputCount);
+            //outBufferQ_1.FastCopyTo(outImag, outputCount);
+            outBufferI_2.FastCopyTo(outReal, outputCount);
+            outBufferQ_2.FastCopyTo(outImag, outputCount);
         }
 
         public void CheckBlocks()
