@@ -38,18 +38,18 @@ namespace RX_SSDV
 
         public BPSKDemod(float costasBw, float costasFreqLimit, 
             float equalizerGain, int equalizerKernelSize, int equalizerSPS,
-            float clockMu, float clockMuGain, float clockOmega, float clockOmegaGain, float clockOmegaLimit, int clockNFilt, int clockNTaps,
+            float clockMu, float clockMuGain, float clockOmega, float clockOmegaGain, float clockOmegaLimit,
             float agcGain, float agcRef)
         {
             InitCostas(costasBw, costasFreqLimit);
             InitEqualizer(equalizerGain, equalizerKernelSize, equalizerSPS);
-            InitClockSync(clockMu, clockMuGain, clockOmega, clockOmegaGain, clockOmegaLimit, clockNFilt, clockNTaps);
+            InitClockSync(clockMu, clockMuGain, clockOmega, clockOmegaGain, clockOmegaLimit);
             InitAGC(agcGain, agcRef);
         }
 
         public BPSKDemod(float costasBw, float costasFreqLimit,
             float equalizerGain, int equalizerKernelSize, int equalizerSPS,
-            float clockMu, float clockMuGain, float clockOmega, float clockOmegaGain, float clockOmegaLimit, int clockNFilt, int clockNTaps,
+            float clockMu, float clockMuGain, float clockOmega, float clockOmegaGain, float clockOmegaLimit,
             float agcGain, float agcRef,
             int arrSize)
         {
@@ -57,7 +57,7 @@ namespace RX_SSDV
 
             InitCostas(costasBw, costasFreqLimit);
             InitEqualizer(equalizerGain, equalizerKernelSize, equalizerSPS);
-            InitClockSync(clockMu, clockMuGain, clockOmega, clockOmegaGain, clockOmegaLimit, clockNFilt, clockNTaps);
+            InitClockSync(clockMu, clockMuGain, clockOmega, clockOmegaGain, clockOmegaLimit);
             InitAGC(agcGain, agcRef);
         }
 
@@ -73,9 +73,9 @@ namespace RX_SSDV
             equalizer = LMS_DD_Equalizer.BuildEqualizer(gain, kernelSize, sps);
         }
 
-        public void InitClockSync(float mu, float muGain, float omega, float omegaGain, float omegaLimit, int nFilt, int nTaps)
+        public void InitClockSync(float mu, float muGain, float omega, float omegaGain, float omegaLimit)
         {
-            clockRecovery = new ClockRecoveryBlock_MM(mu, muGain, omega, omegaGain, omegaLimit, nFilt, nTaps);
+            clockRecovery = new ClockRecoveryBlock_MM(mu, muGain, omega, omegaGain, omegaLimit);
         }
 
         public void InitAGC(float gain, float reference)
@@ -87,7 +87,7 @@ namespace RX_SSDV
         {
             InitCostas(0.05f, 10);
             InitEqualizer(0.05f, 2, 2);
-            InitClockSync(5, 0.75f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f, 128, 128 * 128);
+            InitClockSync(0.5f, 0.175f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f);
             InitAGC(1, 1);
         }
         #endregion
@@ -112,13 +112,13 @@ namespace RX_SSDV
 
             //int agcOutputSize = agc.Process(clockOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
 
-            //int equalizerOutputSize = equalizer.Process(agcOutputSize, outBufferI_1, outBufferQ_1, outBufferI_2, outBufferQ_2);
+            //int equalizerOutputSize = equalizer.Process(clockOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
             outputCount = clockOutputSize;
 
             //outBufferI_1.FastCopyTo(outReal, outputCount);
             //outBufferQ_1.FastCopyTo(outImag, outputCount);
-            outBufferI_2.FastCopyTo(outReal, outputCount);
-            outBufferQ_2.FastCopyTo(outImag, outputCount);
+            outBufferI_2.FastCopyTo(outReal, clockOutputSize);
+            outBufferQ_2.FastCopyTo(outImag, clockOutputSize);
         }
 
         public void CheckBlocks()

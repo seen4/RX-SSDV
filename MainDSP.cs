@@ -103,6 +103,7 @@ namespace RX_SSDV
         public BPSKDemod bpskDemod;
         private float[] demodOutputI;
         private float[] demodOutputQ;
+        private int demodOutputSize;
         public float ConstellationMultiply
         {
             get
@@ -142,7 +143,7 @@ namespace RX_SSDV
                 5, 0.007f, 5, 0.01f, 0.05f, 5, 11 * 5 * SampleSource.WaveFormat.SampleRate);
             */
             bpskDemod = new BPSKDemod();
-            bpskDemod.InitClockSync(5, 0.75f, SamplePerSymbol, 0.75f * 0.75f, 0.05f, 128, 128 * 128);
+            bpskDemod.InitClockSync(5, 0.75f, SamplePerSymbol, 0.75f * 0.75f, 0.05f);
 
             UpdateBitmap(spectrum.Width);
 
@@ -307,10 +308,9 @@ namespace RX_SSDV
         public void ProcessBPSK(float[] realSignal, float[] imagSignal)
         {
             CheckBPSKOutputAvalible(realSignal.Length);
-            ClearBPSKOutputArray();
+            //ClearBPSKOutputArray();
 
-            int outArrCount;
-            bpskDemod.Process(realSignal, imagSignal, demodOutputI, demodOutputQ, out outArrCount);
+            bpskDemod.Process(realSignal, imagSignal, demodOutputI, demodOutputQ, out demodOutputSize);
         }
 
         /// <summary>
@@ -435,7 +435,7 @@ namespace RX_SSDV
 
             constellation.Draw((graphics) =>
             {
-                for (int i = 0; i < samplesRealDemod.Length; i += constellationStepsize)
+                for (int i = 0; i < demodOutputSize; i += constellationStepsize)
                 {
                     int x = (int)(samplesRealDemod[i] * constellationMultiply) + 50;
                     int y = (int)(samplesImagDemod[i] * constellationMultiply) + 50;

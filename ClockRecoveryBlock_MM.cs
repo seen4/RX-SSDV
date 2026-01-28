@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using static RX_SSDV.CostasLoop;
 using static System.Math;
+using static RX_SSDV.InterpolatorTaps;
 
 namespace RX_SSDV
 {
@@ -37,14 +38,11 @@ namespace RX_SSDV
         private Complex c_1T;
         private Complex c_0T;
 
-        private float[] bufferI;
-        private float[] bufferQ;
-
         //DEBUG
         public float Mu => mu;
         public float Omega => omega;
 
-        public ClockRecoveryBlock_MM(float mu, float muGain, float omega, float omegaGain, float omegaLimit, int nFilter, int nTaps) : base()
+        public ClockRecoveryBlock_MM(float mu, float muGain, float omega, float omegaGain, float omegaLimit) : base()
         {
             this.mu = mu;
             this.muGain = muGain;
@@ -55,15 +53,16 @@ namespace RX_SSDV
             omegaMid = omega;
             omegaLimit = omegaRelativeLimit * omega;
 
-            UpdatePFB(nFilter, nTaps);
-            //UpdateBuffer(SampleSource.WAV_BUFFER_SIZE * 2);
+            //UpdatePFB(nFilter, nTaps);
         }
 
+        /*
         public void UpdatePFB(int nFilt, int nTaps)
         {
             //pfb = new PolyphaseFilterBank(RootRaisedCosine(16, nFilt * nTaps, 1, 0.35, nTaps), nFilt);
             pfb = new PolyphaseFilterBank(WindowedSinc(nFilt * 128, Math.PI / nFilt, nFilt), nFilt);
         }
+        */
 
         /// <summary>
         /// Process signal.
@@ -87,7 +86,7 @@ namespace RX_SSDV
 
             for (; ouc < outputSamplesI.Length && inc < inputSize;)
             {
-                if (inc + pfb.NTaps >= historyBuffer.Length)
+                if (inc + nTaps >= historyBuffer.Length)
                     break;
 
                 // Propagate delay
@@ -97,13 +96,13 @@ namespace RX_SSDV
                 c_1T = c_0T;
 
                 // Compute output
-                int imu = (int)MathF.Round(mu * pfb.FilterCount);
+                int imu = (int)MathF.Round(mu * nFilt);
                 if (imu < 0) // If we're out of bounds, clamp
                     imu = 0;
-                if (imu >= pfb.FilterCount)
-                    imu = pfb.FilterCount - 1;
+                if (imu >= nFilt)
+                    imu = nFilt - 1;
 
-                p_0T = DotProd(inc, pfb.taps[^(imu + 1)]);
+                p_0T = DotProd(inc, interpolatorTaps[^(imu + 1)]);
                 outputSamplesI[ouc] = (float)p_0T.Real;
                 outputSamplesQ[ouc++] = (float)p_0T.Imaginary;
 
@@ -147,11 +146,7 @@ namespace RX_SSDV
                 */
             }
 
-            //inputSamplesI.FastCopyTo(bufferI, bufferI.Length - 1, inputSamplesI.Length - bufferI.Length);
-            //inputSamplesQ.FastCopyTo(bufferQ, bufferQ.Length - 1, inputSamplesQ.Length - bufferQ.Length);
-            //isBufferAvalible = true;
-
-            CompleteProcess(ouc);
+            CompleteProcess(inc);
             return ouc;
         }
 
@@ -168,8 +163,6 @@ namespace RX_SSDV
 
             for (int i = 0; i < pfbTaps.Length; i++)
             {
-                //float sampleI = bufferI[i];
-                //float sampleQ = bufferQ[i];
                 Complex sample = historyBuffer[i + startIndex];
                 float sampleI = (float)sample.Real;
                 float sampleQ = (float)sample.Imaginary;
@@ -191,6 +184,7 @@ namespace RX_SSDV
             return (int)((float)inputSize / omega) + 1;
         }
 
+        /*
         private double[] WindowedSinc(int nTaps, double alpha, double norm)
         {
             double[] resampTaps = new double[nTaps];
@@ -209,6 +203,7 @@ namespace RX_SSDV
         {
             return x == 0 ? 1 : Sin(x) / x;
         }
+        */
 
         public static double[] RootRaisedCosine(double gain, double sampling_freq, double symbol_rate, double alpha, int ntaps)
         {
