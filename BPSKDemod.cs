@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Numerics;
 using NWaves.Utils;
 using RX_SSDV.Utils;
+using NWaves.Filters.Base;
 
 namespace RX_SSDV
 {
@@ -15,6 +16,7 @@ namespace RX_SSDV
         public LMS_DD_Equalizer equalizer;
         public ClockRecoveryBlock_MM clockRecovery;
         public FeedforwardAGC agc;
+        public ComplexFirFilter rrcFilter;
 
         private float[] outBufferI_1;
         private float[] outBufferQ_1;
@@ -45,6 +47,7 @@ namespace RX_SSDV
             InitEqualizer(equalizerGain, equalizerKernelSize, equalizerSPS);
             InitClockSync(clockMu, clockMuGain, clockOmega, clockOmegaGain, clockOmegaLimit);
             InitAGC(agcGain, agcRef);
+            //InitRrcFilter();
         }
 
         public BPSKDemod(float costasBw, float costasFreqLimit,
@@ -59,6 +62,7 @@ namespace RX_SSDV
             InitEqualizer(equalizerGain, equalizerKernelSize, equalizerSPS);
             InitClockSync(clockMu, clockMuGain, clockOmega, clockOmegaGain, clockOmegaLimit);
             InitAGC(agcGain, agcRef);
+            //InitRrcFilter();
         }
 
 
@@ -83,12 +87,19 @@ namespace RX_SSDV
             agc = new FeedforwardAGC(gain, reference);
         }
 
+        public void InitRrcFilter(int sampleRate, int symbolRate, int sps)
+        {
+            float[] rrcTaps = FilterUtils.RootRaisedCosine(16, 1, 1 / sps, 0.35f, 11 * MainDSP.SamplePerSymbol);
+            rrcFilter = new ComplexFirFilter(rrcTaps, new float[rrcTaps.Length]);
+        }
+        
         public void InitModulesDefault()
         {
             InitCostas(0.05f, 10);
             InitEqualizer(0.05f, 2, 2);
             InitClockSync(0.5f, 0.175f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f);
             InitAGC(1, 1);
+            //InitRrcFilter();
         }
         #endregion
 
@@ -106,19 +117,23 @@ namespace RX_SSDV
             CheckProcessOutputArr(realSignal.Length);
             CheckBlocks();
 
-            int costasOutputSize = costasLoop.Process(realSignal.Length, realSignal, imagSignal, outBufferI_1, outBufferQ_1);
+            rrcFilter.ProcessOnline(realSignal, imagSignal, outBufferI_1, outBufferQ_1);
 
-            int clockOutputSize = clockRecovery.Process(costasOutputSize, outBufferI_1, outBufferQ_1, outBufferI_2, outBufferQ_2);
+            int costasOutputSize = costasLoop.Process(realSignal.Length, outBufferI_1, outBufferQ_1, outBufferI_2, outBufferQ_2);
+
+            int clockOutputSize = clockRecovery.Process(costasOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
 
             //int agcOutputSize = agc.Process(clockOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
 
             //int equalizerOutputSize = equalizer.Process(clockOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
-            outputCount = clockOutputSize;
 
-            //outBufferI_1.FastCopyTo(outReal, outputCount);
-            //outBufferQ_1.FastCopyTo(outImag, outputCount);
-            outBufferI_2.FastCopyTo(outReal, clockOutputSize);
-            outBufferQ_2.FastCopyTo(outImag, clockOutputSize);
+            outputCount = clockOutputSize;
+            //outputCount = realSignal.Length;
+
+            outBufferI_1.FastCopyTo(outReal, outputCount);
+            outBufferQ_1.FastCopyTo(outImag, outputCount);
+            //outBufferI_2.FastCopyTo(outReal, clockOutputSize);
+            //outBufferQ_2.FastCopyTo(outImag, clockOutputSize);
         }
 
         public void CheckBlocks()

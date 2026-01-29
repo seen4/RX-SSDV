@@ -1,7 +1,6 @@
 ﻿using NWaves.Filters.Base;
 using NWaves.Utils;
 using NWaves.Windows;
-using RX_SSDV.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +11,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using static RX_SSDV.CostasLoop;
 using static System.Math;
-using static RX_SSDV.InterpolatorTaps;
+using static RX_SSDV.Utils.FilterUtils;
 
 namespace RX_SSDV
 {
@@ -86,7 +85,7 @@ namespace RX_SSDV
 
             for (; ouc < outputSamplesI.Length && inc < inputSize;)
             {
-                if (inc + nTaps >= historyBuffer.Length)
+                if (inc + nTapsInterpolator >= historyBuffer.Length)
                     break;
 
                 // Propagate delay
@@ -96,11 +95,11 @@ namespace RX_SSDV
                 c_1T = c_0T;
 
                 // Compute output
-                int imu = (int)MathF.Round(mu * nFilt);
+                int imu = (int)MathF.Round(mu * nFiltInterpolator);
                 if (imu < 0) // If we're out of bounds, clamp
                     imu = 0;
-                if (imu >= nFilt)
-                    imu = nFilt - 1;
+                if (imu >= nFiltInterpolator)
+                    imu = nFiltInterpolator - 1;
 
                 p_0T = DotProd(inc, interpolatorTaps[^(imu + 1)]);
                 outputSamplesI[ouc] = (float)p_0T.Real;
@@ -204,53 +203,5 @@ namespace RX_SSDV
             return x == 0 ? 1 : Sin(x) / x;
         }
         */
-
-        public static double[] RootRaisedCosine(double gain, double sampling_freq, double symbol_rate, double alpha, int ntaps)
-        {
-            ntaps |= 1; // ensure that ntaps is odd
-
-            double spb = sampling_freq / symbol_rate; // samples per bit/symbol
-            double[] taps = new double[ntaps];
-            double scale = 0;
-            for (int i = 0; i < ntaps; i++)
-            {
-                double x1, x2, x3, num, den;
-                double xindx = i - ntaps / 2;
-                x1 = PI * xindx / spb;
-                x2 = 4 * alpha * xindx / spb;
-                x3 = x2 * x2 - 1;
-
-                if (Abs(x3) >= 0.000001)
-                { // Avoid Rounding errors...
-                    if (i != ntaps / 2)
-                        num = Cos((1 + alpha) * x1) +
-                              Sin((1 - alpha) * x1) / (4 * alpha * xindx / spb);
-                    else
-                        num = Cos((1 + alpha) * x1) + (1 - alpha) * PI / (4 * alpha);
-                    den = x3 * PI;
-                }
-                else
-                {
-                    if (alpha == 1)
-                    {
-                        taps[i] = -1;
-                        continue;
-                    }
-                    x3 = (1 - alpha) * x1;
-                    x2 = (1 + alpha) * x1;
-                    num = (Sin(x2) * (1 + alpha) * PI -
-                        Cos(x3) * ((1 - alpha) * PI * spb) / (4 * alpha * xindx) +
-                        Sin(x3) * spb * spb / (4 * alpha * xindx * xindx));
-                    den = -32 * PI * alpha * alpha * xindx / spb;
-                }
-                taps[i] = 4 * alpha * num / den;
-                scale += taps[i];
-            }
-
-            for (int i = 0; i < ntaps; i++)
-                taps[i] = taps[i] * gain / scale;
-
-            return taps;
-        }
     }
 }

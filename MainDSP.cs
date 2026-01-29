@@ -12,6 +12,7 @@ namespace RX_SSDV
     {
         /*Base*/
         private static int sampleRate = 48000;
+        public static int SampleRate => sampleRate;
 
         #region Drawing
         private CanvasGraphicDrawer spectrum;
@@ -170,6 +171,7 @@ namespace RX_SSDV
         {
             freqPerSample = waveFormat.SampleRate / FFT_SIZE;
             sampleRate = waveFormat.SampleRate;
+            bpskDemod.InitRrcFilter(sampleRate, symobolRate, GetSPS());
             //bpskDemod.clockRecovery.UpdatePFB(8, 128 * 8);
             //bpskDemod.equalizer.SamplesPerSymbol = samplesPerSymbol;
         }
