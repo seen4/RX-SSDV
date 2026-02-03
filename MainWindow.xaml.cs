@@ -223,6 +223,20 @@ namespace RX_SSDV
             }
         }
 
+        private void freqShiftBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            float freqShift = mainDSP.bpskDemod.freqShift.Freq;
+            if (float.TryParse(freqShiftBox.Text, out freqShift))
+            {
+                freqShiftBox.Text = $"{freqShift}";
+                mainDSP.bpskDemod.freqShift.Freq = freqShift;
+            }
+            else
+            {
+                freqShiftBox.Text = mainDSP.bpskDemod.freqShift.Freq.ToString();
+            }
+        }
+
         //private void applyFilterBtn_Click(object sender, RoutedEventArgs e)
         //{
         //    if (mainDSP != null)

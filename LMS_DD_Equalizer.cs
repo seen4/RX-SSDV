@@ -140,7 +140,7 @@ namespace RX_SSDV
         /// <returns>Calculated error.</returns>
         public Complex CalcError(Complex sample)
         {
-            float decision = BPSKDemod.BpskDecisionMaker(sample);
+            float decision = BpskDemod.BpskDecisionMaker(sample);
             Complex error = new Complex(decision - sample.Real, -sample.Imaginary);
             return error;
         }

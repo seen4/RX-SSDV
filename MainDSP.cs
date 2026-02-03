@@ -78,14 +78,8 @@ namespace RX_SSDV
 
         #region SSDV Process
         public static int symobolRate = 9600;
-        //private static int samplesPerSymbol = 5;
-        public static int SamplePerSymbol
-        {
-            get
-            {
-                return GetSPS();
-            }
-        }
+        private static int samplesPerSymbol = 5;
+        public static int SamplePerSymbol => samplesPerSymbol;
 
         public bool EnableProcess
         {
@@ -101,7 +95,7 @@ namespace RX_SSDV
         private bool enableProcess = false;
 
         //BPSK Demod
-        public BPSKDemod bpskDemod;
+        public BpskDemod bpskDemod;
         private float[] demodOutputI;
         private float[] demodOutputQ;
         private int demodOutputSize;
@@ -137,14 +131,8 @@ namespace RX_SSDV
         private void Init()
         {
             fft = new Fft(FFT_SIZE);
-            /*
-            bpskDemod = new BPSKDemod(
-                0.005f, 10, 
-                0.001f, 2, 2,
-                5, 0.007f, 5, 0.01f, 0.05f, 5, 11 * 5 * SampleSource.WaveFormat.SampleRate);
-            */
-            bpskDemod = new BPSKDemod();
-            bpskDemod.InitClockSync(5, 0.75f, SamplePerSymbol, 0.75f * 0.75f, 0.05f);
+            bpskDemod = new BpskDemod();
+            //bpskDemod.InitClockSync(5, 0.75f, SamplePerSymbol, 0.75f * 0.75f, 0.05f);
 
             UpdateBitmap(spectrum.Width);
 
@@ -162,7 +150,6 @@ namespace RX_SSDV
         public static int GetSPS()
         {
             int sps = sampleRate / symobolRate;
-            //samplesPerSymbol = sps;
             return sps;
         }
 
@@ -171,9 +158,8 @@ namespace RX_SSDV
         {
             freqPerSample = waveFormat.SampleRate / FFT_SIZE;
             sampleRate = waveFormat.SampleRate;
-            bpskDemod.InitRrcFilter(sampleRate, symobolRate, GetSPS());
-            //bpskDemod.clockRecovery.UpdatePFB(8, 128 * 8);
-            //bpskDemod.equalizer.SamplesPerSymbol = samplesPerSymbol;
+            samplesPerSymbol = GetSPS(); //Update sps
+            bpskDemod.OnSampleSourceChange(waveFormat);
         }
 
         //更新频谱每行的bitmap
@@ -485,12 +471,21 @@ namespace RX_SSDV
                 graphics.DrawLines(Pens.Black, points);   // 连接这些点, 画线
 
                 //Band-pass filter
-                int bpMin = frequencyShift - bandwidth / 2;
-                int bpMax = frequencyShift + bandwidth / 2;
+                if (enableFilter)
+                {
+                    int bpMin = frequencyShift - bandwidth / 2;
+                    int bpMax = frequencyShift + bandwidth / 2;
 
-                graphics.DrawLine(Pens.LightCyan, new Point(centerPos + (int)(bpMin * scaleCoeff), 0), new Point(centerPos + (int)(bpMin * scaleCoeff), spectrum.Height - FFT_POS));
-                graphics.DrawLine(Pens.LightCyan, new Point(centerPos + (int)(bpMax * scaleCoeff), 0), new Point(centerPos + (int)(bpMax * scaleCoeff), spectrum.Height - FFT_POS));
-                graphics.FillRectangle(bfBrush, centerPos + (int)(bpMin * scaleCoeff), 0, (bpMax - bpMin) * scaleCoeff, spectrum.Height - FFT_POS);
+                    graphics.DrawLine(Pens.LightCyan, new Point(centerPos + (int)(bpMin * scaleCoeff), 0), new Point(centerPos + (int)(bpMin * scaleCoeff), spectrum.Height - FFT_POS));
+                    graphics.DrawLine(Pens.LightCyan, new Point(centerPos + (int)(bpMax * scaleCoeff), 0), new Point(centerPos + (int)(bpMax * scaleCoeff), spectrum.Height - FFT_POS));
+                    graphics.FillRectangle(bfBrush, centerPos + (int)(bpMin * scaleCoeff), 0, (bpMax - bpMin) * scaleCoeff, spectrum.Height - FFT_POS);
+                }
+
+                if(bpskDemod != null)
+                {
+                    int freq = (int)bpskDemod.freqShift.Freq;
+                    graphics.DrawLine(Pens.Blue, new Point(centerPos + (int)(freq * scaleCoeff), 0), new Point(centerPos + (int)(freq * scaleCoeff), spectrum.Height - FFT_POS));
+                }
 
                 //Analyze
                 //不要担心这里编译器会帮你优化成StringBuilder的

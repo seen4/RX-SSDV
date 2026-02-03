@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:RX_SSDV"
         mc:Ignorable="d"
-        Title="RX-SSDV" Height="450" Width="800">
+        Title="RX-SSDV" Height="800" Width="1000">
     <Grid>
         <TabControl>
             <TabItem Header="{DynamicResource MainWindow_TabSpectrum}" d:Header="Spectrum">
@@ -92,6 +92,10 @@
                             <GroupBox Header="Process" Grid.Row="3">
                                 <StackPanel Orientation="Vertical">
                                     <CheckBox Name="enableProcessorBox" Click="enableProcessorBox_Click" Content="Enable Process"/>
+                                    <Grid Margin="0,5,0,0">
+                                        <Label Content="Freq Shift"/>
+                                        <TextBox Name="freqShiftBox" LostFocus="freqShiftBox_LostFocus" Margin="80,0,5,0" Text="0"/>
+                                    </Grid>
                                     <Grid Margin="0,5,0,0">
                                         <Label Content="Cons Scale"/>
                                         <TextBox Name="constellationScaleBox" LostFocus="constellationScaleBox_LostFocus" Margin="80,0,5,0" Text="0"/>
