@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Math;
 
-namespace RX_SSDV
+namespace RX_SSDV.Utils
 {
-    public class InterpolatorTaps
+    public class FilterUtils
     {
-        public const int nTaps = 8;
-        public const int nFilt = 128;
+        public const int nTapsInterpolator = 8;
+        public const int nFiltInterpolator = 128;
         public static double[][] interpolatorTaps = [
     //    -4            -3            -2            -1             0             1 2 3 mu
      [ 0.00000e+00,
@@ -1045,5 +1046,54 @@ namespace RX_SSDV
       0.00000e+00,
       0.00000e+00 ], // 128/128
         ];
+
+        
+        public static float[] RootRaisedCosine(double gain, double sampling_freq, double symbol_rate, double alpha, int ntaps)
+        {
+            ntaps |= 1; // ensure that ntaps is odd
+
+            double spb = sampling_freq / symbol_rate; // samples per bit/symbol
+            float[] taps = new float[ntaps];
+            double scale = 0;
+            for (int i = 0; i < ntaps; i++)
+            {
+                double x1, x2, x3, num, den;
+                double xindx = i - ntaps / 2;
+                x1 = PI * xindx / spb;
+                x2 = 4 * alpha * xindx / spb;
+                x3 = x2 * x2 - 1;
+
+                if (Abs(x3) >= 0.000001)
+                { // Avoid Rounding errors...
+                    if (i != ntaps / 2)
+                        num = Cos((1 + alpha) * x1) +
+                              Sin((1 - alpha) * x1) / (4 * alpha * xindx / spb);
+                    else
+                        num = Cos((1 + alpha) * x1) + (1 - alpha) * PI / (4 * alpha);
+                    den = x3 * PI;
+                }
+                else
+                {
+                    if (alpha == 1)
+                    {
+                        taps[i] = -1;
+                        continue;
+                    }
+                    x3 = (1 - alpha) * x1;
+                    x2 = (1 + alpha) * x1;
+                    num = (Sin(x2) * (1 + alpha) * PI -
+                        Cos(x3) * ((1 - alpha) * PI * spb) / (4 * alpha * xindx) +
+                        Sin(x3) * spb * spb / (4 * alpha * xindx * xindx));
+                    den = -32 * PI * alpha * alpha * xindx / spb;
+                }
+                taps[i] = (float)(4 * alpha * num / den);
+                scale += taps[i];
+            }
+
+            for (int i = 0; i < ntaps; i++)
+                taps[i] = (float)(taps[i] * gain / scale);
+
+            return taps;
+        }
     }
 }

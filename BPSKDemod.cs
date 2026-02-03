@@ -117,11 +117,11 @@ namespace RX_SSDV
             CheckProcessOutputArr(realSignal.Length);
             CheckBlocks();
 
-            rrcFilter.ProcessOnline(realSignal, imagSignal, outBufferI_1, outBufferQ_1);
+            //rrcFilter.ProcessOnline(realSignal, imagSignal, outBufferI_1, outBufferQ_1);
 
-            int costasOutputSize = costasLoop.Process(realSignal.Length, outBufferI_1, outBufferQ_1, outBufferI_2, outBufferQ_2);
+            int costasOutputSize = costasLoop.Process(realSignal.Length, realSignal, imagSignal, outBufferI_1, outBufferQ_1);
 
-            int clockOutputSize = clockRecovery.Process(costasOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
+            int clockOutputSize = clockRecovery.Process(costasOutputSize, outBufferI_1, outBufferQ_1, outBufferI_2, outBufferQ_2);
 
             //int agcOutputSize = agc.Process(clockOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
 
@@ -129,9 +129,9 @@ namespace RX_SSDV
 
             outputCount = clockOutputSize;
             //outputCount = realSignal.Length;
-
-            outBufferI_1.FastCopyTo(outReal, outputCount);
-            outBufferQ_1.FastCopyTo(outImag, outputCount);
+            
+            outBufferI_2.FastCopyTo(outReal, outputCount);
+            outBufferQ_2.FastCopyTo(outImag, outputCount);
             //outBufferI_2.FastCopyTo(outReal, clockOutputSize);
             //outBufferQ_2.FastCopyTo(outImag, clockOutputSize);
         }
