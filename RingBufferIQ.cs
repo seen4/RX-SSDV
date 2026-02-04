@@ -12,7 +12,9 @@ namespace RX_SSDV.Utils
     public class RingBufferIQ
     {
         private float[] bufferI;
+        public float[] BufferI => bufferI;
         private float[] bufferQ;
+        public float[] BufferQ => bufferQ;
 
         private int inputIndex = 0;
         private int outputIndex = 0;

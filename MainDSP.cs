@@ -21,6 +21,7 @@ namespace RX_SSDV
         private Point[] points;
         private Point[] pointsOfFilterI;
         private Point[] pointsOfFilterQ;
+        private RingBufferIQ constellationBuffer = new RingBufferIQ(2048);
         //private Point[] pointsOfconstellation;
         private Font font = new Font("Arial", 8);
         private SolidBrush brush = new SolidBrush(Color.Black);
@@ -411,6 +412,8 @@ namespace RX_SSDV
             //    pointsOfconstellation[j] = new Point((int)(samplesReal[i] * constellationMultiply), (int)(samplesImag[i] * constellationMultiply));
             //}
 
+            constellationBuffer.Write(samplesRealDemod, samplesImagDemod, demodOutputSize);
+
             constellationOrigin.Draw((graphics) =>
             {
                 for (int i = 0; i < samplesReal.Length; i += constellationStepsize)
@@ -423,10 +426,10 @@ namespace RX_SSDV
 
             constellation.Draw((graphics) =>
             {
-                for (int i = 0; i < demodOutputSize; i += constellationStepsize)
+                for (int i = 0; i < constellationBuffer.Length; i += constellationStepsize)
                 {
-                    int x = (int)(samplesRealDemod[i] * constellationMultiply) + 50;
-                    int y = (int)(samplesImagDemod[i] * constellationMultiply) + 50;
+                    int x = (int)(constellationBuffer.BufferI[i] * constellationMultiply) + 50;
+                    int y = (int)(constellationBuffer.BufferQ[i] * constellationMultiply) + 50;
                     graphics.DrawRectangle(Pens.Green, x, y, 1, 1);
                 }
             });
