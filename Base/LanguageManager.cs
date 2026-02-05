@@ -7,7 +7,7 @@ using System.Windows;
 using System.Globalization;
 using System;
 
-namespace RX_SSDV
+namespace RX_SSDV.Base
 {
     public static class LanguageManager
     {

@@ -10,7 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Image = System.Windows.Controls.Image;
 
-namespace RX_SSDV
+namespace RX_SSDV.Graphic
 {
     public class CanvasGraphicDrawer
     {

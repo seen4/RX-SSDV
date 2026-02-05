@@ -7,7 +7,7 @@ using System.Printing;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RX_SSDV.Utils
+namespace RX_SSDV.DSP
 {
     public class RingBufferIQ
     {

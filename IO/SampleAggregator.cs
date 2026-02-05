@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace RX_SSDV
+namespace RX_SSDV.IO
 {
     public class SampleAggregator : ISampleProvider
     {

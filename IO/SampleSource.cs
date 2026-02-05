@@ -9,7 +9,7 @@ using System.Numerics;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace RX_SSDV
+namespace RX_SSDV.IO
 {
     public class SampleSource
     {

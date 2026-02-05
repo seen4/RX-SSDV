@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace RX_SSDV
+namespace RX_SSDV.DSP
 {
 	public class FreqShift : DspBlock
 	{

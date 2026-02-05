@@ -5,8 +5,10 @@ using NWaves.Utils;
 using System.Drawing;
 using MessageBox = System.Windows.MessageBox;
 using RX_SSDV.Utils;
+using RX_SSDV.IO;
+using RX_SSDV.Graphic;
 
-namespace RX_SSDV
+namespace RX_SSDV.DSP
 {
     public class MainDSP
     {

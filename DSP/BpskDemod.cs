@@ -7,38 +7,41 @@ using System.Numerics;
 using NWaves.Utils;
 using RX_SSDV.Utils;
 using NWaves.Filters.Base;
+using NAudio.Wave;
 
-namespace RX_SSDV
+namespace RX_SSDV.DSP
 {
-    public class BPSKDemod
+    public class BpskDemod
     {
         public CostasLoop costasLoop;
         public LMS_DD_Equalizer equalizer;
         public ClockRecoveryBlock_MM clockRecovery;
         public FeedforwardAGC agc;
         public ComplexFirFilter rrcFilter;
+        public FreqShift freqShift;
 
         private float[] outBufferI_1;
         private float[] outBufferQ_1;
         private float[] outBufferI_2;
         private float[] outBufferQ_2;
-        //private int bufferId = 1;
 
         private static float imaginaryPoint = 1;
 
-        public BPSKDemod()
+        public BpskDemod()
         {
             InitModulesDefault();
         }
 
-        public BPSKDemod(int arrSize)
+        //Well, actually I don't use these methods
+        /*
+        public BpskDemod(int arrSize)
         {
             CheckProcessOutputArr(arrSize);
 
             InitModulesDefault();
         }
 
-        public BPSKDemod(float costasBw, float costasFreqLimit, 
+        public BpskDemod(float costasBw, float costasFreqLimit, 
             float equalizerGain, int equalizerKernelSize, int equalizerSPS,
             float clockMu, float clockMuGain, float clockOmega, float clockOmegaGain, float clockOmegaLimit,
             float agcGain, float agcRef)
@@ -50,7 +53,7 @@ namespace RX_SSDV
             //InitRrcFilter();
         }
 
-        public BPSKDemod(float costasBw, float costasFreqLimit,
+        public BpskDemod(float costasBw, float costasFreqLimit,
             float equalizerGain, int equalizerKernelSize, int equalizerSPS,
             float clockMu, float clockMuGain, float clockOmega, float clockOmegaGain, float clockOmegaLimit,
             float agcGain, float agcRef,
@@ -64,9 +67,11 @@ namespace RX_SSDV
             InitAGC(agcGain, agcRef);
             //InitRrcFilter();
         }
+        */
 
 
         #region Module Define
+        /*
         public void InitCostas(float bw, float freqLimit)
         {
             costasLoop = new CostasLoop(bw, freqLimit);
@@ -92,16 +97,25 @@ namespace RX_SSDV
             float[] rrcTaps = FilterUtils.RootRaisedCosine(16, 1, 1 / sps, 0.35f, 11 * MainDSP.SamplePerSymbol);
             rrcFilter = new ComplexFirFilter(rrcTaps, new float[rrcTaps.Length]);
         }
+        */
         
+        //Make it looks more easier!
         public void InitModulesDefault()
         {
-            InitCostas(0.05f, 10);
-            InitEqualizer(0.05f, 2, 2);
-            InitClockSync(0.5f, 0.175f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f);
-            InitAGC(1, 1);
-            //InitRrcFilter();
+            freqShift = new FreqShift(48000, 0);
+            costasLoop = new CostasLoop(0.05f, 10);
+            equalizer = LMS_DD_Equalizer.BuildEqualizer(0.05f, 2, 2);
+            clockRecovery = new ClockRecoveryBlock_MM(0.5f, 0.175f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f);
+            agc = new FeedforwardAGC(1, 1);
+            //float[] rrcTaps = FilterUtils.RootRaisedCosine(16, 1, 1 / MainDSP.GetSPS(), 0.35f, 11 * MainDSP.SamplePerSymbol);
+            //rrcFilter = new ComplexFirFilter(rrcTaps, new float[rrcTaps.Length]);
         }
         #endregion
+        
+        public void OnSampleSourceChange(WaveFormat waveFormat)
+        {
+            clockRecovery = new ClockRecoveryBlock_MM(0.5f, 0.175f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f);
+        }
 
         /// <summary>
         /// Process BPSK demodulation.
@@ -118,10 +132,11 @@ namespace RX_SSDV
             CheckBlocks();
 
             //rrcFilter.ProcessOnline(realSignal, imagSignal, outBufferI_1, outBufferQ_1);
+            freqShift.Process(realSignal.Length, realSignal, imagSignal, outBufferI_1, outBufferQ_1);
 
-            int costasOutputSize = costasLoop.Process(realSignal.Length, realSignal, imagSignal, outBufferI_1, outBufferQ_1);
+            int costasOutputSize = costasLoop.Process(realSignal.Length, outBufferI_1, outBufferQ_1, outBufferI_2, outBufferQ_2);
 
-            int clockOutputSize = clockRecovery.Process(costasOutputSize, outBufferI_1, outBufferQ_1, outBufferI_2, outBufferQ_2);
+            int clockOutputSize = clockRecovery.Process(costasOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
 
             //int agcOutputSize = agc.Process(clockOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
 
@@ -130,8 +145,8 @@ namespace RX_SSDV
             outputCount = clockOutputSize;
             //outputCount = realSignal.Length;
             
-            outBufferI_2.FastCopyTo(outReal, outputCount);
-            outBufferQ_2.FastCopyTo(outImag, outputCount);
+            outBufferI_1.FastCopyTo(outReal, outputCount);
+            outBufferQ_1.FastCopyTo(outImag, outputCount);
             //outBufferI_2.FastCopyTo(outReal, clockOutputSize);
             //outBufferQ_2.FastCopyTo(outImag, clockOutputSize);
         }
@@ -146,6 +161,8 @@ namespace RX_SSDV
                 throw new NullReferenceException("LMS equalizer not initialized");
         }
 
+        //use 'FeedforwardAGC' instead
+        /*
         public float CalcAvgMagnitude(float[] samplesI, float[] samplesQ)
         {
             float positiveAvg = 0;
@@ -175,7 +192,7 @@ namespace RX_SSDV
             if (channelI.Length != channelQ.Length)
                 return;
 
-            for(int i = 0; i < channelI.Length; i++)
+            for (int i = 0; i < channelI.Length; i++)
             {
                 float sampleI = channelI[i];
                 float sampleQ = channelQ[i];
@@ -186,6 +203,7 @@ namespace RX_SSDV
                 channelQ[i] = sampleQ / magnitude;
             }
         }
+        */
 
         /// <summary>
         /// Check output if arrays avalible, if not, init array(s) by 'arrSize'.

@@ -6,7 +6,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RX_SSDV
+namespace RX_SSDV.DSP
 {
     public class CostasLoop : DspBlock
     {

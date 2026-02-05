@@ -1,4 +1,8 @@
-﻿using System.Text;
+﻿using RX_SSDV.Base;
+using RX_SSDV.DSP;
+using RX_SSDV.Graphic;
+using RX_SSDV.IO;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;

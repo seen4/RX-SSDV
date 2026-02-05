@@ -9,16 +9,14 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using static RX_SSDV.CostasLoop;
+using static RX_SSDV.DSP.CostasLoop;
 using static System.Math;
 using static RX_SSDV.Utils.FilterUtils;
 
-namespace RX_SSDV
+namespace RX_SSDV.DSP
 {
     public class ClockRecoveryBlock_MM : DspBlock
     {
-        public PolyphaseFilterBank pfb;
-
         private int inc, ouc;
         private float phaseError;
 
@@ -51,17 +49,7 @@ namespace RX_SSDV
 
             omegaMid = omega;
             omegaLimit = omegaRelativeLimit * omega;
-
-            //UpdatePFB(nFilter, nTaps);
         }
-
-        /*
-        public void UpdatePFB(int nFilt, int nTaps)
-        {
-            //pfb = new PolyphaseFilterBank(RootRaisedCosine(16, nFilt * nTaps, 1, 0.35, nTaps), nFilt);
-            pfb = new PolyphaseFilterBank(WindowedSinc(nFilt * 128, Math.PI / nFilt, nFilt), nFilt);
-        }
-        */
 
         /// <summary>
         /// Process signal.

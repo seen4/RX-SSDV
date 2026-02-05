@@ -1,12 +1,12 @@
 using NWaves.Filters.Base;
-using RX_SSDV.Utils;
+using RX_SSDV.IO;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Reflection;
 
 
-namespace RX_SSDV
+namespace RX_SSDV.DSP
 {
     public class LMS_DD_Equalizer : ComplexFirFilter
     {

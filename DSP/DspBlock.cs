@@ -1,11 +1,11 @@
-﻿using RX_SSDV.Utils;
+﻿using RX_SSDV.IO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RX_SSDV
+namespace RX_SSDV.DSP
 {
     public abstract class DspBlock
     {
