@@ -33,6 +33,9 @@ namespace RX_SSDV.CCSDS.Viterbi
                 CalcNextStatus();
             }
 
+            /// <summary>
+            /// Calcucate next statuses.
+            /// </summary>
             private void CalcNextStatus()
             {
                 nextStatuses[0] = status << 1;
@@ -40,6 +43,12 @@ namespace RX_SSDV.CCSDS.Viterbi
             }
 
             //Convolutionly code (n,k,N) = (2,1,7) ONLY! (IEEE 802.11 Standard)
+            /// <summary>
+            /// Calcucate convolutional code by the input value.
+            /// </summary>
+            /// <param name="inputCode">Input value</param>
+            /// <returns>The convolutional code</returns>
+            /// <exception cref="ArgumentOutOfRangeException">when 'inputCode' not equals 0 or 1</exception>
             public int CalcCode(int inputCode)
             {
                 if (inputCode < 0 || inputCode > 1)
@@ -61,6 +70,12 @@ namespace RX_SSDV.CCSDS.Viterbi
                 return code;
             }
 
+            /// <summary>
+            /// Get next status by the input.
+            /// </summary>
+            /// <param name="input">Input value</param>
+            /// <returns>Next status</returns>
+            /// <exception cref="ArgumentOutOfRangeException">When 'input' not equals 0 or 1</exception>
             public Status GetNextStatus(int input)
             {
                 if (input < 0 || input > 1)
@@ -96,6 +111,11 @@ namespace RX_SSDV.CCSDS.Viterbi
             lastStatus = GetInitalStatus(initalValue);
         }
 
+        /// <summary>
+        /// Add a value to the current 'lastStatus'.
+        /// </summary>
+        /// <param name="value">Value to be added.</param>
+        /// <exception cref="ArgumentOutOfRangeException">When 'value' not equals 0 or 1</exception>
         public void Add(int value)
         {
             if (value < 0 || value > 1)
@@ -109,6 +129,9 @@ namespace RX_SSDV.CCSDS.Viterbi
             return new Status(initalValue, viterbi.Constraint - 1);
         }
 
+        /// <summary>
+        /// Reset trellis.
+        /// </summary>
         public void ResetTrellis()
         {
             isInited = false;
