@@ -1,14 +1,10 @@
-﻿using NWaves.Filters.Base;
-using NWaves.Utils;
-using NWaves.Windows;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
 using static RX_SSDV.DSP.CostasLoop;
 using static System.Math;
 using static RX_SSDV.Utils.FilterUtils;
