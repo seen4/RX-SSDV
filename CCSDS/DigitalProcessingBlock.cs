@@ -11,7 +11,7 @@ namespace RX_SSDV.CCSDS
     //DspBlock but no IQ ^-^
     public class DigitalProcessingBlock
     {
-        public RingBuffer historyBuffer;
+        public RingBufferBinary historyBuffer;
 
         public DigitalProcessingBlock()
         {
@@ -24,7 +24,7 @@ namespace RX_SSDV.CCSDS
         /// <param name="bufferSize">New buffer size</param>
         public virtual void SetHistory(int bufferSize)
         {
-            historyBuffer = new RingBuffer(bufferSize);
+            historyBuffer = new RingBufferBinary(bufferSize);
         }
 
         public virtual void Process(float[] inputArr,  float[] outArr, int inputSize)
