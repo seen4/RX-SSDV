@@ -150,7 +150,7 @@ namespace RX_SSDV.CCSDS.Viterbi
         {
             for(int i = 0; i < pathDst.Length; i++)
             {
-                (int, int) p = SuvivingPath(bits, i);
+                (int, int) p = SurvivingPath(bits, i);
                 newPathDst[i] = p.Item1;
                 statusList.Add(p.Item2);
             }
@@ -162,7 +162,7 @@ namespace RX_SSDV.CCSDS.Viterbi
         /// <param name="bits">Input bits</param>
         /// <param name="status">Status</param>
         /// <returns>The minimum Hamming distance and the status</returns>
-        public (int, int) SuvivingPath(byte bits, int status)
+        public (int, int) SurvivingPath(byte bits, int status)
         {
             (int, int) nextStatuses = Status.CalcNextStatuses(status, viterbi.Constraint);
             int nextStatus1 = nextStatuses.Item1;
