@@ -65,39 +65,18 @@ namespace RX_SSDV.CCSDS.Viterbi
                 outputSize++;
 
                 //Get input
-                int input1 = (int)inputArr[i];
-                int input2 = (int)inputArr[i + 1];
+                byte input1 = (byte)inputArr[i];
+                byte input2 = (byte)inputArr[i + 1];
+                byte bits = (byte)(input1 << 1 + input2);
 
-                int hammingDst = 0b_1000_0000; //Just a big number
-                int survivingPath = -1;
+                //Update surviving path
+                trellis.UpdateSurvivingPath(bits);
 
-                //Get surviving path
-                for (int j = 0; j < 2; j++)
-                {
-                    int status = trellis.LastStatus.CalcCode(j);
-
-                    //Read code from status
-                    byte code1 = ReadInt(status, 1);
-                    byte code2 = ReadInt(status, 2);
-
-                    //Calcucate hamming dst
-                    int dst = 0;
-                    dst += input1 - code1 > 0 ? input1 - code1 : -input1 + code1; //Abs(input1 - code1)
-                    dst += input2 - code2 > 0 ? input2 - code2 : -input2 + code2;
-
-                    if (dst < hammingDst)
-                    {
-                        hammingDst = dst;
-                        survivingPath = j;
-                    }
-                }
-
-                //To next status
-                trellis.Add(survivingPath);
-
-                outputArr[outputSize - 1] = survivingPath;
+                //TODO: Traceback
+                //outputArr[outputSize - 1] = 0;
             }
 
+            trellis.ClearTrellis();
             CompleteProcess(processedCount);
             return outputSize;
         }

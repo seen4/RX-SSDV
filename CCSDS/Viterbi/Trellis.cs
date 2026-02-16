@@ -13,13 +13,13 @@ namespace RX_SSDV.CCSDS.Viterbi
         {
             private int status = 0b_0000_0000;
             public int StatusCode => status;
-            private int length = 6;
+            private int constraint = 6;
             private int[] nextStatuses = new int[2];
 
-            public Status(int status, int length)
+            public Status(int status, int constraint)
             {
                 this.status = status;
-                this.length = length;
+                this.constraint = constraint;
                 CalcNextStatus();
             }
 
@@ -29,7 +29,7 @@ namespace RX_SSDV.CCSDS.Viterbi
                     throw new ArgumentOutOfRangeException("input must equals 0 or 1");
 
                 status = lastStatus.nextStatuses[input];
-                length = lastStatus.length;
+                constraint = lastStatus.constraint;
                 CalcNextStatus();
             }
 
@@ -38,8 +38,11 @@ namespace RX_SSDV.CCSDS.Viterbi
             /// </summary>
             private void CalcNextStatus()
             {
-                nextStatuses[0] = status << 1;
-                nextStatuses[1] = (status << 1) + 1;
+                int s = (status & ((1 << (constraint - 2)) - 1)) << 1;
+                //nextStatuses[0] = status << 1;
+                //nextStatuses[1] = (status << 1) + 1;
+                nextStatuses[0] = s | 0;
+                nextStatuses[1] = s | 1;
             }
 
             //Convolutionly code (n,k,N) = (2,1,7) ONLY! (IEEE 802.11 Standard)
@@ -49,7 +52,7 @@ namespace RX_SSDV.CCSDS.Viterbi
             /// <param name="inputCode">Input value</param>
             /// <returns>The convolutional code</returns>
             /// <exception cref="ArgumentOutOfRangeException">when 'inputCode' not equals 0 or 1</exception>
-            public int CalcCode(int inputCode)
+            public int CalcCode217(int inputCode)
             {
                 if (inputCode < 0 || inputCode > 1)
                     throw new ArgumentOutOfRangeException("inputCode must equals 0 or 1");
@@ -70,6 +73,19 @@ namespace RX_SSDV.CCSDS.Viterbi
                 return code;
             }
 
+            //Convolutionly code (n,k,N) = (2,1,7) ONLY! (IEEE 802.11 Standard)
+            /// <summary>
+            /// Calcucate convolutional code by the input value.
+            /// </summary>
+            /// <param name="inputCode">Input value</param>
+            /// <returns>The convolutional code</returns>
+            /// <exception cref="ArgumentOutOfRangeException">when 'inputCode' not equals 0 or 1</exception>
+            public static int CalcCode217(int status, int inputCode)
+            {
+                Status s = new Status(status, 7);
+                return s.CalcCode217(inputCode);
+            }
+
             /// <summary>
             /// Get next status by the input.
             /// </summary>
@@ -86,12 +102,9 @@ namespace RX_SSDV.CCSDS.Viterbi
         }
 
         private Viterbi viterbi;
-
-        private Status lastStatus;
-        public Status LastStatus => lastStatus;
-
-        private bool isInited = false;
-        public bool IsInited => isInited;
+        private List<int> statusList;
+        private int[] pathDst;
+        private int[] newPathDst;
 
         public Trellis(Viterbi viterbi) 
         {
@@ -101,40 +114,58 @@ namespace RX_SSDV.CCSDS.Viterbi
 
         public void Init()
         {
-            this.isInited = true;
-            lastStatus = GetInitalStatus(0);
-        }
-
-        public void Init(int initalValue)
-        {
-            this.isInited = true;
-            lastStatus = GetInitalStatus(initalValue);
-        }
-
-        /// <summary>
-        /// Add a value to the current 'lastStatus'.
-        /// </summary>
-        /// <param name="value">Value to be added.</param>
-        /// <exception cref="ArgumentOutOfRangeException">When 'value' not equals 0 or 1</exception>
-        public void Add(int value)
-        {
-            if (value < 0 || value > 1)
-                throw new ArgumentOutOfRangeException("value must equals 0 or 1");
-
-            lastStatus = lastStatus.GetNextStatus(value);
-        }
-
-        private Status GetInitalStatus(int initalValue)
-        {
-            return new Status(initalValue, viterbi.Constraint - 1);
+            statusList = new List<int>();
+            pathDst = new int[1 << (viterbi.Constraint - 1)]; //size = (constraint - 1) ^ 2
+            newPathDst = new int[1 << (viterbi.Constraint - 1)];
         }
 
         /// <summary>
         /// Reset trellis.
         /// </summary>
-        public void ResetTrellis()
+        public void ClearTrellis()
         {
-            isInited = false;
+            statusList.Clear();
+            Array.Clear(pathDst, 0, pathDst.Length);
+            Array.Clear(newPathDst, 0, pathDst.Length);
+        }
+
+        public void UpdateSurvivingPath(byte bits)
+        {
+            for(int i = 0; i < pathDst.Length; i++)
+            {
+                (int, int) p = SuvivingPath(bits, i);
+                newPathDst[i] = p.Item1;
+                statusList.Add(p.Item2);
+            }
+        }
+
+        public (int, int) SuvivingPath(byte bits, int status)
+        {
+            int nextStatus1 = Status.CalcCode217(status, 0);
+            int nextStatus2 = Status.CalcCode217(status, 1);
+
+            int pd1 = pathDst[nextStatus1] + HammingDst(bits, status, 0);
+            int pd2 = pathDst[nextStatus2] + HammingDst(bits, status, 1);
+
+            return pd1 <= pd2 ? (pd1, nextStatus1) : (pd2, nextStatus2);
+        }
+
+        public static int HammingDst(byte bits, int curStatus, int input)
+        {
+            int status = Status.CalcCode217(curStatus, input);
+
+            //Read code
+            byte input1 = ReadInt(bits, 1);
+            byte input2 = ReadInt(bits, 2);
+            byte code1 = ReadInt(status, 1);
+            byte code2 = ReadInt(status, 2);
+
+            //Calcucate hamming dst
+            int dst = 0;
+            dst += input1 - code1 >= 0 ? input1 - code1 : -input1 + code1; //Abs(input1 - code1)
+            dst += input2 - code2 >= 0 ? input2 - code2 : -input2 + code2;
+
+            return dst;
         }
     }
 }
