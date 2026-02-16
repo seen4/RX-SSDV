@@ -20,7 +20,7 @@ namespace RX_SSDV.CCSDS.Viterbi
             {
                 this.status = status;
                 this.constraint = constraint;
-                CalcNextStatus();
+                CalcNextStatuses();
             }
 
             public Status(Status lastStatus, int input)
@@ -34,7 +34,7 @@ namespace RX_SSDV.CCSDS.Viterbi
             }
 
             /// <summary>
-            /// Calcucate next statuses.
+            /// Calculate next statuses.
             /// </summary>
             private void CalcNextStatuses()
             {
@@ -44,7 +44,10 @@ namespace RX_SSDV.CCSDS.Viterbi
             }
 
             /// <summary>
-            /// Calcucate next statuses by given status int.
+            /// Calculate next statuses by given status int.
+            /// <param name="status">The status</param>
+            /// <param name="constraint">Constraint of the status</param>
+            /// <returns>Next statuses</returns>
             /// </summary>
             public static (int, int) CalcNextStatuses(int status, int constraint)
             {
@@ -54,7 +57,7 @@ namespace RX_SSDV.CCSDS.Viterbi
 
             //Convolutionly code (n,k,N) = (2,1,7) ONLY! (IEEE 802.11 Standard)
             /// <summary>
-            /// Calcucate convolutional code by the input value.
+            /// Calculate convolutional code by the input value.
             /// </summary>
             /// <param name="inputCode">Input value</param>
             /// <returns>The convolutional code</returns>
@@ -82,11 +85,11 @@ namespace RX_SSDV.CCSDS.Viterbi
 
             //Convolutionly code (n,k,N) = (2,1,7) ONLY! (IEEE 802.11 Standard)
             /// <summary>
-            /// Calcucate convolutional code by the input value.
+            /// Calculate convolutional code by the input value.
             /// </summary>
+            /// <param name="status">The status</param>
             /// <param name="inputCode">Input value</param>
             /// <returns>The convolutional code</returns>
-            /// <exception cref="ArgumentOutOfRangeException">when 'inputCode' not equals 0 or 1</exception>
             public static int CalcCode217(int status, int inputCode)
             {
                 Status s = new Status(status, 7);
@@ -119,6 +122,9 @@ namespace RX_SSDV.CCSDS.Viterbi
             Init();
         }
 
+        /// <summary>
+        /// Init <see cref="Trellis"/>
+        /// </summary>
         public void Init()
         {
             statusList = new List<int>();
@@ -136,6 +142,10 @@ namespace RX_SSDV.CCSDS.Viterbi
             Array.Clear(newPathDst, 0, pathDst.Length);
         }
 
+        /// <summary>
+        /// Update surviving path.
+        /// </summary>
+        /// <param name="bits">Input bits</param>
         public void UpdateSurvivingPath(byte bits)
         {
             for(int i = 0; i < pathDst.Length; i++)
@@ -146,6 +156,12 @@ namespace RX_SSDV.CCSDS.Viterbi
             }
         }
 
+        /// <summary>
+        /// Find the surviving path between input bits and a status.
+        /// </summary>
+        /// <param name="bits">Input bits</param>
+        /// <param name="status">Status</param>
+        /// <returns>The minimum Hamming distance and the status</returns>
         public (int, int) SuvivingPath(byte bits, int status)
         {
             (int, int) nextStatuses = Status.CalcNextStatuses(status, viterbi.Constraint);
@@ -158,6 +174,13 @@ namespace RX_SSDV.CCSDS.Viterbi
             return pd1 <= pd2 ? (pd1, nextStatus1) : (pd2, nextStatus2);
         }
 
+        /// <summary>
+        /// Calculate Hamming distance between input bits and current status.
+        /// </summary>
+        /// <param name="bits">Input bits</param>
+        /// <param name="curStatus">Current status</param>
+        /// <param name="input">New bit of status</param>
+        /// <returns>The Hamming distance</returns>
         public static int HammingDst(byte bits, int curStatus, int input)
         {
             int status = Status.CalcCode217(curStatus, input);
@@ -168,7 +191,7 @@ namespace RX_SSDV.CCSDS.Viterbi
             byte code1 = ReadInt(status, 1);
             byte code2 = ReadInt(status, 2);
 
-            //Calcucate hamming dst
+            //Calcucate Hamming dst
             int dst = 0;
             dst += input1 - code1 >= 0 ? input1 - code1 : -input1 + code1; //Abs(input1 - code1)
             dst += input2 - code2 >= 0 ? input2 - code2 : -input2 + code2;
