@@ -30,19 +30,26 @@ namespace RX_SSDV.CCSDS.Viterbi
 
                 status = lastStatus.nextStatuses[input];
                 constraint = lastStatus.constraint;
-                CalcNextStatus();
+                CalcNextStatuses();
             }
 
             /// <summary>
             /// Calcucate next statuses.
             /// </summary>
-            private void CalcNextStatus()
+            private void CalcNextStatuses()
+            {
+                (int, int) nextStatues = CalcNextStatuses(status, constraint);
+                nextStatuses[0] = nextStatues.Item1;
+                nextStatuses[1] = nextStatues.Item2;
+            }
+
+            /// <summary>
+            /// Calcucate next statuses by given status int.
+            /// </summary>
+            public static (int, int) CalcNextStatuses(int status, int constraint)
             {
                 int s = (status & ((1 << (constraint - 2)) - 1)) << 1;
-                //nextStatuses[0] = status << 1;
-                //nextStatuses[1] = (status << 1) + 1;
-                nextStatuses[0] = s | 0;
-                nextStatuses[1] = s | 1;
+                return (s | 0, s | 1);
             }
 
             //Convolutionly code (n,k,N) = (2,1,7) ONLY! (IEEE 802.11 Standard)
@@ -120,12 +127,12 @@ namespace RX_SSDV.CCSDS.Viterbi
         }
 
         /// <summary>
-        /// Reset trellis.
+        /// Clear trellis.
         /// </summary>
         public void ClearTrellis()
         {
             statusList.Clear();
-            Array.Clear(pathDst, 0, pathDst.Length);
+            //Array.Clear(pathDst, 0, pathDst.Length);
             Array.Clear(newPathDst, 0, pathDst.Length);
         }
 
@@ -141,8 +148,9 @@ namespace RX_SSDV.CCSDS.Viterbi
 
         public (int, int) SuvivingPath(byte bits, int status)
         {
-            int nextStatus1 = Status.CalcCode217(status, 0);
-            int nextStatus2 = Status.CalcCode217(status, 1);
+            (int, int) nextStatuses = Status.CalcNextStatuses(status, viterbi.Constraint);
+            int nextStatus1 = nextStatuses.Item1;
+            int nextStatus2 = nextStatuses.Item2;
 
             int pd1 = pathDst[nextStatus1] + HammingDst(bits, status, 0);
             int pd2 = pathDst[nextStatus2] + HammingDst(bits, status, 1);
