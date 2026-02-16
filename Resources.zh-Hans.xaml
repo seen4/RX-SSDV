@@ -1,7 +1,7 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:system="clr-namespace:System;assembly=netstandard">
-	<system:String x:Key="MainWindow_TabSpectrum" >频谱喵</system:String>
-    <system:String x:Key="MainWindow_TabProcess" >处理喵</system:String>
-    <system:String x:Key="MainWindow_TabLog" >日志喵</system:String>
-    <system:String x:Key="MainWindow_TabSettings" >设置喵</system:String>
+	<system:String x:Key="MainWindow_TabSpectrum" >频谱</system:String>
+    <system:String x:Key="MainWindow_TabProcess" >处理</system:String>
+    <system:String x:Key="MainWindow_TabLog" >日志</system:String>
+    <system:String x:Key="MainWindow_TabSettings" >设置</system:String>
 </ResourceDictionary>
