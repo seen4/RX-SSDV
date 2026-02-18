@@ -16,6 +16,8 @@ namespace RX_SSDV.DSP
         private static int sampleRate = 48000;
         public static int SampleRate => sampleRate;
 
+        private static readonly object lockObj = new object();
+
         #region Drawing
         private CanvasGraphicDrawer spectrum;
         private CanvasGraphicDrawer constellationOrigin;
@@ -30,10 +32,10 @@ namespace RX_SSDV.DSP
         private SolidBrush bfBrush = new SolidBrush(Color.FromArgb(120, 0, 255, 255));
 
         private bool isDrawerOnline = false;
-        private bool drawerUpdateFlag = false;
+        private bool isDrawerPrepared = false;
         public float[] spectrumTempSamplesI;
         public float[] spectrumTempSamplesQ;
-        public bool drawerTempLock = false;
+        //public bool drawerTempLock = false;
         private int currentDrawerTick = 0;
         #endregion
 
@@ -232,25 +234,28 @@ namespace RX_SSDV.DSP
                             currentDrawerTick++;
                             Thread.Sleep(10);
                         }
-                        else if (currentDrawerTick >= spectrumPeriod && !drawerTempLock && drawerUpdateFlag)
+                        else if (currentDrawerTick >= spectrumPeriod && isDrawerPrepared)
                         {
-                            //Before 'ProcessSpectrum', spectrumTempSamplesI/Q just are origin samples.
-                            if (ArrayUtil.CheckNeedUpdate(bufferI, spectrumTempSamplesI.Length) ||
-                                ArrayUtil.CheckNeedUpdate(bufferI, spectrumTempSamplesI.Length))
+                            lock (lockObj)
                             {
-                                bufferI = new float[spectrumTempSamplesI.Length];
-                                bufferQ = new float[spectrumTempSamplesQ.Length];
+                                //Before 'ProcessSpectrum', spectrumTempSamplesI/Q just are origin samples.
+                                if (ArrayUtil.CheckNeedUpdate(bufferI, spectrumTempSamplesI.Length) ||
+                                    ArrayUtil.CheckNeedUpdate(bufferI, spectrumTempSamplesI.Length))
+                                {
+                                    bufferI = new float[spectrumTempSamplesI.Length];
+                                    bufferQ = new float[spectrumTempSamplesQ.Length];
+                                }
+                                spectrumTempSamplesI.FastCopyTo(bufferI, spectrumTempSamplesI.Length);
+                                spectrumTempSamplesQ.FastCopyTo(bufferQ, spectrumTempSamplesQ.Length);
+
+                                //Reset drawer flag/ticker
+                                //drawerUpdateFlag = false;
+                                currentDrawerTick = 0;
+
+                                //DSP
+                                ProcessSpectrum(spectrumTempSamplesI, spectrumTempSamplesQ);
+                                UpdateConstellation(bufferI, bufferQ, demodOutputI, demodOutputQ);
                             }
-                            spectrumTempSamplesI.FastCopyTo(bufferI, spectrumTempSamplesI.Length);
-                            spectrumTempSamplesQ.FastCopyTo(bufferQ, spectrumTempSamplesQ.Length);
-
-                            //Reset drawer flag/ticker
-                            drawerUpdateFlag = false;
-                            currentDrawerTick = 0;
-
-                            //DSP
-                            ProcessSpectrum(spectrumTempSamplesI, spectrumTempSamplesQ);
-                            UpdateConstellation(bufferI, bufferQ, demodOutputI, demodOutputQ);
                         }
                     }
                 });
@@ -271,24 +276,29 @@ namespace RX_SSDV.DSP
                 ProcessFilter(samplesReal, samplesImag);
 
             //Lock drawer to aviod unexpected read
-            drawerTempLock = true;
+            //drawerTempLock = true;
 
             //BPSK
-            if (enableProcess)
-                ProcessBPSK(filteredSamplesI, filteredSamplesQ);
-
-            //Prepare data for drawer
-            if (spectrumTempSamplesI == null || spectrumTempSamplesQ == null)
+            lock (lockObj)
             {
-                spectrumTempSamplesI = new float[samplesReal.Length];
-                spectrumTempSamplesQ = new float[samplesImag.Length];
-            }
-            samplesReal.FastCopyTo(spectrumTempSamplesI, samplesReal.Length);
-            samplesImag.FastCopyTo(spectrumTempSamplesQ, samplesImag.Length);
+                if (enableProcess)
+                    ProcessBPSK(filteredSamplesI, filteredSamplesQ);
 
-            //Unlock drawer and let it update
-            drawerTempLock = false;
-            drawerUpdateFlag = true;
+                //Prepare data for drawer
+                if (spectrumTempSamplesI == null || spectrumTempSamplesQ == null)
+                {
+                    spectrumTempSamplesI = new float[samplesReal.Length];
+                    spectrumTempSamplesQ = new float[samplesImag.Length];
+                }
+                samplesReal.FastCopyTo(spectrumTempSamplesI, samplesReal.Length);
+                samplesImag.FastCopyTo(spectrumTempSamplesQ, samplesImag.Length);
+                //Unlock drawer and let it update
+                //drawerTempLock = false;
+                //drawerUpdateFlag = true;
+            }
+
+            if(!isDrawerPrepared)
+                isDrawerPrepared = true;
         }
 
         /// <summary>
