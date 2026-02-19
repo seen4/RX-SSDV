@@ -58,10 +58,14 @@ namespace RX_SSDV.CCSDS.Viterbi
                 pathDst[i] = int.MinValue / 2;
         }
 
+        /// <summary>
+        /// Calculate the states table.
+        /// </summary>
         private void CalcOutputs()
         {
             branchOutputs = new int[statusCount, 2];
 
+            //Polynomials of (2,1,7) convolutional code, IEEE 802.11 standard
             int poly1 = 0b_1101101;
             int poly2 = 0b_1001111;
 

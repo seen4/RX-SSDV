@@ -36,6 +36,11 @@ namespace RX_SSDV.Utils
             return (byte)((input >> (pos - 1)) & 1);
         }
 
+        /// <summary>
+        /// Calculate the parity of an input number (mod 2 sum).
+        /// </summary>
+        /// <param name="input">Input integer</param>
+        /// <returns>The mod 2 sum</returns>
         public static int Parity(int input)
         {
             input ^= input >> 16;
