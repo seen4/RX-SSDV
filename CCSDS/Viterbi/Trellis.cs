@@ -13,8 +13,9 @@ namespace RX_SSDV.CCSDS.Viterbi
         {
             private int status = 0b_0000_0000;
             public int StatusCode => status;
-            private int constraint = 6;
+            private int constraint = 7;
             private int[] nextStatuses = new int[2];
+            private int[] sourceStatuses = new int[2];
 
             public Status(int status, int constraint)
             {
@@ -31,6 +32,7 @@ namespace RX_SSDV.CCSDS.Viterbi
                 status = lastStatus.nextStatuses[input];
                 constraint = lastStatus.constraint;
                 CalcNextStatuses();
+                CalcSourceStatuses();
             }
 
             /// <summary>
@@ -44,6 +46,16 @@ namespace RX_SSDV.CCSDS.Viterbi
             }
 
             /// <summary>
+            /// Calculate next statuses.
+            /// </summary>
+            private void CalcSourceStatuses()
+            {
+                (int, int) sourceStatues = CalcNextStatuses(status, constraint);
+                sourceStatuses[0] = sourceStatues.Item1;
+                sourceStatuses[1] = sourceStatues.Item2;
+            }
+
+            /// <summary>
             /// Calculate next statuses by given status int.
             /// <param name="status">The status</param>
             /// <param name="constraint">Constraint of the status</param>
@@ -53,6 +65,19 @@ namespace RX_SSDV.CCSDS.Viterbi
             {
                 int s = (status & ((1 << (constraint - 2)) - 1)) << 1;
                 return (s | 0, s | 1);
+            }
+
+            /// <summary>
+            /// Calculate source statuses by given status int.
+            /// <param name="status">The status</param>
+            /// <param name="constraint">Constraint of the status</param>
+            /// <returns>Next statuses</returns>
+            /// </summary>
+            public static (int, int) CalcSourceStatuses(int status, int constraint)
+            {
+                int s = status >> 1;
+                //return (s | (0 << (constraint - 2)), s | (1 << (constraint - 2));
+                return (s | 0, s | (1 << (constraint - 2)));
             }
 
             //Convolutionly code (n,k,N) = (2,1,7) ONLY! (IEEE 802.11 Standard)
@@ -112,13 +137,35 @@ namespace RX_SSDV.CCSDS.Viterbi
         }
 
         private Viterbi viterbi;
-        private List<int> statusList;
-        private int[] pathDst;
         private int[] newPathDst;
+        private int statusCount;
+
+        public List<int> statusList;
+        public int[] pathDst;
+        public int StatusCount => statusCount;
+
+        public (int, int) MinPath
+        {
+            get
+            {
+                int index = -1;
+                int min = 0b_1000_0000_0000_0000;
+                for(int i = 0; i < pathDst.Length; i++)
+                {
+                    if(min > pathDst[i])
+                    {
+                        min = pathDst[i];
+                        index = i;
+                    }
+                }
+                return (index, min);
+            }
+        }
 
         public Trellis(Viterbi viterbi) 
         {
             this.viterbi = viterbi;
+            statusCount = 1 << (viterbi.Constraint - 1); //count = (constraint - 1) ^ 2
             Init();
         }
 
@@ -128,8 +175,8 @@ namespace RX_SSDV.CCSDS.Viterbi
         public void Init()
         {
             statusList = new List<int>();
-            pathDst = new int[1 << (viterbi.Constraint - 1)]; //size = (constraint - 1) ^ 2
-            newPathDst = new int[1 << (viterbi.Constraint - 1)];
+            pathDst = new int[statusCount];
+            newPathDst = new int[statusCount];
         }
 
         /// <summary>
@@ -138,7 +185,7 @@ namespace RX_SSDV.CCSDS.Viterbi
         public void ClearTrellis()
         {
             statusList.Clear();
-            //Array.Clear(pathDst, 0, pathDst.Length);
+            Array.Clear(pathDst, 0, pathDst.Length);
             Array.Clear(newPathDst, 0, pathDst.Length);
         }
 
@@ -164,14 +211,14 @@ namespace RX_SSDV.CCSDS.Viterbi
         /// <returns>The minimum Hamming distance and the status</returns>
         public (int, int) SurvivingPath(byte bits, int status)
         {
-            (int, int) nextStatuses = Status.CalcNextStatuses(status, viterbi.Constraint);
-            int nextStatus1 = nextStatuses.Item1;
-            int nextStatus2 = nextStatuses.Item2;
+            (int, int) nextStatuses = Status.CalcSourceStatuses(status, viterbi.Constraint);
+            int sourceStatus1 = nextStatuses.Item1;
+            int sourceStatus2 = nextStatuses.Item2;
 
-            int pd1 = pathDst[nextStatus1] + HammingDst(bits, status, 0);
-            int pd2 = pathDst[nextStatus2] + HammingDst(bits, status, 1);
+            int pd1 = pathDst[sourceStatus1] + HammingDst(bits, status, 0);
+            int pd2 = pathDst[sourceStatus2] + HammingDst(bits, status, 1);
 
-            return pd1 <= pd2 ? (pd1, nextStatus1) : (pd2, nextStatus2);
+            return pd1 <= pd2 ? (pd1, sourceStatus1) : (pd2, sourceStatus2);
         }
 
         /// <summary>
@@ -193,8 +240,8 @@ namespace RX_SSDV.CCSDS.Viterbi
 
             //Calcucate Hamming dst
             int dst = 0;
-            dst += input1 - code1 >= 0 ? input1 - code1 : -input1 + code1; //Abs(input1 - code1)
-            dst += input2 - code2 >= 0 ? input2 - code2 : -input2 + code2;
+            dst += input1 == code1 ? 0 : 1;
+            dst += input2 == code2 ? 0 : 1;
 
             return dst;
         }

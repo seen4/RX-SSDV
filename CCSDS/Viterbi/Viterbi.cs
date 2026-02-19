@@ -55,14 +55,11 @@ namespace RX_SSDV.CCSDS.Viterbi
             base.Process(inputArr, outputArr, inputSize);
             int outputSize = 0, processedCount = 0;
 
+            //Generate trellis
             for (int i = 0; i < inputSize; i += n)
             {
                 if (i + 1 > inputSize - 1)
                     break;
-
-                //Update counter
-                processedCount += n;
-                outputSize++;
 
                 //Get input
                 byte input1 = (byte)inputArr[i];
@@ -72,8 +69,19 @@ namespace RX_SSDV.CCSDS.Viterbi
                 //Update surviving path
                 trellis.UpdateSurvivingPath(bits);
 
-                //TODO: Traceback
-                //outputArr[outputSize - 1] = 0;
+                //Update counter
+                processedCount += n;
+            }
+
+            //Traceback
+            int status = trellis.MinPath.Item1;
+            for (int i = trellis.statusList.Count - trellis.StatusCount; i > 0; i -= constraint)
+            {
+                int input = ReadInt(status, 1); //Read input code from current status
+                outputArr[outputSize] = input; //Output
+                status = trellis.statusList[i + status]; //Find previous status of current status 
+
+                outputSize++;
             }
 
             trellis.ClearTrellis();
