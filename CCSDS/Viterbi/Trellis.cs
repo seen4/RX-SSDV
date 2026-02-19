@@ -9,136 +9,11 @@ namespace RX_SSDV.CCSDS.Viterbi
 {
     public class Trellis
     {
-        public struct Status
-        {
-            private int status = 0b_0000_0000;
-            public int StatusCode => status;
-            private int constraint = 7;
-            private int[] nextStatuses = new int[2];
-            private int[] sourceStatuses = new int[2];
-
-            public Status(int status, int constraint)
-            {
-                this.status = status;
-                this.constraint = constraint;
-                CalcNextStatuses();
-            }
-
-            public Status(Status lastStatus, int input)
-            {
-                if (input < 0 || input > 1)
-                    throw new ArgumentOutOfRangeException("input must equals 0 or 1");
-
-                status = lastStatus.nextStatuses[input];
-                constraint = lastStatus.constraint;
-                CalcNextStatuses();
-                CalcSourceStatuses();
-            }
-
-            /// <summary>
-            /// Calculate next statuses.
-            /// </summary>
-            private void CalcNextStatuses()
-            {
-                (int, int) nextStatues = CalcNextStatuses(status, constraint);
-                nextStatuses[0] = nextStatues.Item1;
-                nextStatuses[1] = nextStatues.Item2;
-            }
-
-            /// <summary>
-            /// Calculate next statuses.
-            /// </summary>
-            private void CalcSourceStatuses()
-            {
-                (int, int) sourceStatues = CalcNextStatuses(status, constraint);
-                sourceStatuses[0] = sourceStatues.Item1;
-                sourceStatuses[1] = sourceStatues.Item2;
-            }
-
-            /// <summary>
-            /// Calculate next statuses by given status int.
-            /// <param name="status">The status</param>
-            /// <param name="constraint">Constraint of the status</param>
-            /// <returns>Next statuses</returns>
-            /// </summary>
-            public static (int, int) CalcNextStatuses(int status, int constraint)
-            {
-                int s = (status & ((1 << (constraint - 2)) - 1)) << 1;
-                return (s | 0, s | 1);
-            }
-
-            /// <summary>
-            /// Calculate source statuses by given status int.
-            /// <param name="status">The status</param>
-            /// <param name="constraint">Constraint of the status</param>
-            /// <returns>Next statuses</returns>
-            /// </summary>
-            public static (int, int) CalcSourceStatuses(int status, int constraint)
-            {
-                int s = status >> 1;
-                //return (s | (0 << (constraint - 2)), s | (1 << (constraint - 2));
-                return (s | 0, s | (1 << (constraint - 2)));
-            }
-
-            //Convolutionly code (n,k,N) = (2,1,7) ONLY! (IEEE 802.11 Standard)
-            /// <summary>
-            /// Calculate convolutional code by the input value.
-            /// </summary>
-            /// <param name="inputCode">Input value</param>
-            /// <returns>The convolutional code</returns>
-            /// <exception cref="ArgumentOutOfRangeException">when 'inputCode' not equals 0 or 1</exception>
-            public int CalcCode217(int inputCode)
-            {
-                if (inputCode < 0 || inputCode > 1)
-                    throw new ArgumentOutOfRangeException("inputCode must equals 0 or 1");
-
-                /*  [0]   [1]   [2]   [3]   [4]   [5]   [6] (length = N = 7)
-                 *  new  int#0 int#1 int#2 int#3 int#4 int#5
-                 */
-
-                int output1 = 0, output2 = 0;
-                output1 += inputCode + ReadInt(status, 2) + ReadInt(status, 3) + ReadInt(status, 5) + ReadInt(status, 6);
-                output1 += inputCode + ReadInt(status, 1) + ReadInt(status, 2) + ReadInt(status, 3) + ReadInt(status, 6);
-                output1 = output1 % 2 == 0 ? 0 : 1;
-                output2 = output2 % 2 == 0 ? 0 : 1;
-                int code = output1;
-                code <<= 1;
-                code += output2;
-
-                return code;
-            }
-
-            //Convolutionly code (n,k,N) = (2,1,7) ONLY! (IEEE 802.11 Standard)
-            /// <summary>
-            /// Calculate convolutional code by the input value.
-            /// </summary>
-            /// <param name="status">The status</param>
-            /// <param name="inputCode">Input value</param>
-            /// <returns>The convolutional code</returns>
-            public static int CalcCode217(int status, int inputCode)
-            {
-                Status s = new Status(status, 7);
-                return s.CalcCode217(inputCode);
-            }
-
-            /// <summary>
-            /// Get next status by the input.
-            /// </summary>
-            /// <param name="input">Input value</param>
-            /// <returns>Next status</returns>
-            /// <exception cref="ArgumentOutOfRangeException">When 'input' not equals 0 or 1</exception>
-            public Status GetNextStatus(int input)
-            {
-                if (input < 0 || input > 1)
-                    throw new ArgumentOutOfRangeException("input must equals 0 or 1");
-
-                return new Status(status, input);
-            }
-        }
-
         private Viterbi viterbi;
         private int[] newPathDst;
         private int statusCount;
+
+        private int[,] branchOutputs;
 
         public List<int> statusList;
         public int[] pathDst;
@@ -149,10 +24,10 @@ namespace RX_SSDV.CCSDS.Viterbi
             get
             {
                 int index = -1;
-                int min = 0b_1000_0000_0000_0000;
+                int min = int.MaxValue;
                 for(int i = 0; i < pathDst.Length; i++)
                 {
-                    if(min > pathDst[i])
+                    if(pathDst[i] < min)
                     {
                         min = pathDst[i];
                         index = i;
@@ -174,9 +49,34 @@ namespace RX_SSDV.CCSDS.Viterbi
         /// </summary>
         public void Init()
         {
-            statusList = new List<int>();
+            statusList = new List<int>(statusCount * 4096);
             pathDst = new int[statusCount];
             newPathDst = new int[statusCount];
+            CalcOutputs();
+
+            for (int i = 1; i < pathDst.Length; i++)
+                pathDst[i] = int.MinValue / 2;
+        }
+
+        private void CalcOutputs()
+        {
+            branchOutputs = new int[statusCount, 2];
+
+            int poly1 = 0b_1101101;
+            int poly2 = 0b_1001111;
+
+            for(int state = 0; state < statusCount; state++)
+            {
+                for(int input = 0; input < 2; input++)
+                {
+                    int s = (state << 1) | input;
+
+                    int output1 = Parity(s & poly1);
+                    int output2 = Parity(s & poly2);
+
+                    branchOutputs[state, input] = (output1 << 1) | output2;
+                }
+            }
         }
 
         /// <summary>
@@ -201,6 +101,10 @@ namespace RX_SSDV.CCSDS.Viterbi
                 newPathDst[i] = p.Item1;
                 statusList.Add(p.Item2);
             }
+
+            int[] temp = pathDst;
+            pathDst = newPathDst;
+            newPathDst = temp;
         }
 
         /// <summary>
@@ -209,14 +113,14 @@ namespace RX_SSDV.CCSDS.Viterbi
         /// <param name="bits">Input bits</param>
         /// <param name="status">Status</param>
         /// <returns>The minimum Hamming distance and the status</returns>
-        public (int, int) SurvivingPath(byte bits, int status)
+        public ValueTuple<int, int> SurvivingPath(byte bits, int status)
         {
-            (int, int) nextStatuses = Status.CalcSourceStatuses(status, viterbi.Constraint);
+            (int, int) nextStatuses = CalcSourceStatuses(status, viterbi.Constraint);
             int sourceStatus1 = nextStatuses.Item1;
             int sourceStatus2 = nextStatuses.Item2;
 
-            int pd1 = pathDst[sourceStatus1] + HammingDst(bits, status, 0);
-            int pd2 = pathDst[sourceStatus2] + HammingDst(bits, status, 1);
+            int pd1 = pathDst[sourceStatus1] + HammingDst(bits, sourceStatus1, 0);
+            int pd2 = pathDst[sourceStatus2] + HammingDst(bits, sourceStatus2, 1);
 
             return pd1 <= pd2 ? (pd1, sourceStatus1) : (pd2, sourceStatus2);
         }
@@ -228,22 +132,47 @@ namespace RX_SSDV.CCSDS.Viterbi
         /// <param name="curStatus">Current status</param>
         /// <param name="input">New bit of status</param>
         /// <returns>The Hamming distance</returns>
-        public static int HammingDst(byte bits, int curStatus, int input)
+        public int HammingDst(byte bits, int curStatus, int input)
         {
-            int status = Status.CalcCode217(curStatus, input);
+            int status = branchOutputs[curStatus, input];
 
             //Read code
-            byte input1 = ReadInt(bits, 1);
-            byte input2 = ReadInt(bits, 2);
-            byte code1 = ReadInt(status, 1);
-            byte code2 = ReadInt(status, 2);
+            byte rx1 = ReadInt(bits, 1);
+            byte rx2 = ReadInt(bits, 2);
+            byte tx1 = ReadInt(status, 1);
+            byte tx2 = ReadInt(status, 2);
 
             //Calcucate Hamming dst
             int dst = 0;
-            dst += input1 == code1 ? 0 : 1;
-            dst += input2 == code2 ? 0 : 1;
+            dst += rx1 == tx1 ? 0 : 1;
+            dst += rx2 == tx2 ? 0 : 1;
 
             return dst;
+        }
+
+        /// <summary>
+        /// Calculate next statuses by given status int.
+        /// <param name="status">The status</param>
+        /// <param name="constraint">Constraint of the status</param>
+        /// <returns>Next statuses</returns>
+        /// </summary>
+        public static (int, int) CalcNextStatuses(int status, int constraint)
+        {
+            int s = (status & ((1 << (constraint - 2)) - 1)) << 1;
+            return (s | 0, s | 1);
+        }
+
+        /// <summary>
+        /// Calculate source statuses by given status int.
+        /// <param name="status">The status</param>
+        /// <param name="constraint">Constraint of the status</param>
+        /// <returns>Next statuses</returns>
+        /// </summary>
+        public static (int, int) CalcSourceStatuses(int status, int constraint)
+        {
+            int s = status >> 1;
+            //return (s | (0 << (constraint - 2)), s | (1 << (constraint - 2));
+            return (s | 0, s | (1 << (constraint - 2)));
         }
     }
 }

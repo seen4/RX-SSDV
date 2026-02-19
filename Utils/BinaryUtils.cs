@@ -35,5 +35,15 @@ namespace RX_SSDV.Utils
             //Easier method
             return (byte)((input >> (pos - 1)) & 1);
         }
+
+        public static int Parity(int input)
+        {
+            input ^= input >> 16;
+            input ^= input >> 8;
+            input ^= input >> 4;
+            input ^= input >> 2;
+            input ^= input >> 1;
+            return input & 1;
+        }
     }
 }

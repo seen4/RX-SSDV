@@ -9,6 +9,9 @@ using System.Threading.Tasks;
 namespace RX_SSDV.CCSDS
 {
     //DspBlock but no IQ ^-^
+    /// <summary>
+    /// Single channel version of <see cref="DspBlock"/>
+    /// </summary>
     public class DigitalProcessingBlock
     {
         public RingBufferBinary historyBuffer;

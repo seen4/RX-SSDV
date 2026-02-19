@@ -40,6 +40,7 @@ namespace RX_SSDV.CCSDS.Viterbi
         }
 
         //Don't use this or use param (2,1,7)
+        [Obsolete("Only supports (n = 2, k = 1, N = 7) convolutional codes")]
         public Viterbi(int n, int k, int N)
         {
             this.n = n;
@@ -62,9 +63,9 @@ namespace RX_SSDV.CCSDS.Viterbi
                     break;
 
                 //Get input
-                byte input1 = (byte)inputArr[i];
-                byte input2 = (byte)inputArr[i + 1];
-                byte bits = (byte)(input1 << 1 + input2);
+                byte input1 = (byte)historyBuffer[i];
+                byte input2 = (byte)historyBuffer[i + 1];
+                byte bits = (byte)((input1 << 1) + input2);
 
                 //Update surviving path
                 trellis.UpdateSurvivingPath(bits);
@@ -75,7 +76,7 @@ namespace RX_SSDV.CCSDS.Viterbi
 
             //Traceback
             int status = trellis.MinPath.Item1;
-            for (int i = trellis.statusList.Count - trellis.StatusCount; i > 0; i -= constraint)
+            for (int i = trellis.statusList.Count - trellis.StatusCount; i >= 0; i -= trellis.StatusCount)
             {
                 int input = ReadInt(status, 1); //Read input code from current status
                 outputArr[outputSize] = input; //Output
@@ -85,6 +86,8 @@ namespace RX_SSDV.CCSDS.Viterbi
             }
 
             trellis.ClearTrellis();
+            Array.Reverse(outputArr, 0, outputSize);
+
             CompleteProcess(processedCount);
             return outputSize;
         }

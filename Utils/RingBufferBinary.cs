@@ -9,6 +9,9 @@ using System.Threading.Tasks;
 
 namespace RX_SSDV.DSP
 {
+    /// <summary>
+    /// Single array version of <see cref="RingBufferIQ"/>
+    /// </summary>
     public class RingBufferBinary
     {
         private float[] buffer;
