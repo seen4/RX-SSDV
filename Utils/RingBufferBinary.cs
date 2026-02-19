@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace RX_SSDV.DSP
 {
-    public class RingBuffer
+    public class RingBufferBinary
     {
         private float[] buffer;
         public float[] Buffer => buffer;
@@ -50,7 +50,7 @@ namespace RX_SSDV.DSP
             }
         }
 
-        public RingBuffer(int size)
+        public RingBufferBinary(int size)
         {
             bufferSize = size;
             buffer = new float[bufferSize];
