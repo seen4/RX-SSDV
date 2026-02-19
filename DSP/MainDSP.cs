@@ -2,11 +2,12 @@
 using NWaves.Filters.Base;
 using NWaves.Transforms;
 using NWaves.Utils;
+using RX_SSDV.Graphic;
+using RX_SSDV.IO;
+using RX_SSDV.Utils;
+using System;
 using System.Drawing;
 using MessageBox = System.Windows.MessageBox;
-using RX_SSDV.Utils;
-using RX_SSDV.IO;
-using RX_SSDV.Graphic;
 
 namespace RX_SSDV.DSP
 {
@@ -26,7 +27,6 @@ namespace RX_SSDV.DSP
         private Point[] pointsOfFilterI;
         private Point[] pointsOfFilterQ;
         private RingBufferIQ constellationBuffer = new RingBufferIQ(2048);
-        //private Point[] pointsOfconstellation;
         private Font font = new Font("Arial", 8);
         private SolidBrush brush = new SolidBrush(Color.Black);
         private SolidBrush bfBrush = new SolidBrush(Color.FromArgb(120, 0, 255, 255));
@@ -35,7 +35,6 @@ namespace RX_SSDV.DSP
         private bool isDrawerPrepared = false;
         public float[] spectrumTempSamplesI;
         public float[] spectrumTempSamplesQ;
-        //public bool drawerTempLock = false;
         private int currentDrawerTick = 0;
         #endregion
 
@@ -137,7 +136,6 @@ namespace RX_SSDV.DSP
         {
             fft = new Fft(FFT_SIZE);
             bpskDemod = new BpskDemod();
-            //bpskDemod.InitClockSync(5, 0.75f, SamplePerSymbol, 0.75f * 0.75f, 0.05f);
 
             UpdateBitmap(spectrum.Width);
 
@@ -145,7 +143,7 @@ namespace RX_SSDV.DSP
             SampleSource.onSourceChange += OnSourceChange;
             spectrum.onSizeChange += (w, h) => { UpdateBitmap(w); };
 
-            StartSpectrum();
+            StartDrawing();
         }
 
         /// <summary>
@@ -165,17 +163,6 @@ namespace RX_SSDV.DSP
             sampleRate = waveFormat.SampleRate;
             samplesPerSymbol = GetSPS(); //Update sps
             bpskDemod.OnSampleSourceChange(waveFormat);
-        }
-
-        //更新频谱每行的bitmap
-        private void UpdateBitmap(int width)
-        {
-            spectrumCacheBitmap = new Bitmap(width, 1);
-            fftDataset = new double[FFT_POS][];
-            for (int i = 0; i < fftDataset.Length; i++)
-            {
-                fftDataset[i] = new double[SampleSource.WAV_BUFFER_SIZE];
-            }
         }
 
         /// <summary>
@@ -213,10 +200,11 @@ namespace RX_SSDV.DSP
             }
         }
 
+        #region Drawing
         /// <summary>
         /// Start all graphic drawing.
         /// </summary>
-        private void StartSpectrum()
+        private void StartDrawing()
         {
             if(!isDrawerOnline)
             {
@@ -238,23 +226,7 @@ namespace RX_SSDV.DSP
                         {
                             lock (lockObj)
                             {
-                                //Before 'ProcessSpectrum', spectrumTempSamplesI/Q just are origin samples.
-                                if (ArrayUtil.CheckNeedUpdate(bufferI, spectrumTempSamplesI.Length) ||
-                                    ArrayUtil.CheckNeedUpdate(bufferI, spectrumTempSamplesI.Length))
-                                {
-                                    bufferI = new float[spectrumTempSamplesI.Length];
-                                    bufferQ = new float[spectrumTempSamplesQ.Length];
-                                }
-                                spectrumTempSamplesI.FastCopyTo(bufferI, spectrumTempSamplesI.Length);
-                                spectrumTempSamplesQ.FastCopyTo(bufferQ, spectrumTempSamplesQ.Length);
-
-                                //Reset drawer flag/ticker
-                                //drawerUpdateFlag = false;
-                                currentDrawerTick = 0;
-
-                                //DSP
-                                ProcessSpectrum(spectrumTempSamplesI, spectrumTempSamplesQ);
-                                UpdateConstellation(bufferI, bufferQ, demodOutputI, demodOutputQ);
+                                Draw(bufferI, bufferQ);
                             }
                         }
                     }
@@ -262,6 +234,214 @@ namespace RX_SSDV.DSP
             }
         }
 
+        //进行主要的绘制
+        private void Draw(float[] bufferI, float[] bufferQ)
+        {
+            //Before 'ProcessSpectrum', spectrumTempSamplesI/Q just are origin samples.
+            if (ArrayUtil.CheckNeedUpdate(bufferI, spectrumTempSamplesI.Length) ||
+                ArrayUtil.CheckNeedUpdate(bufferI, spectrumTempSamplesI.Length))
+            {
+                bufferI = new float[spectrumTempSamplesI.Length];
+                bufferQ = new float[spectrumTempSamplesQ.Length];
+            }
+            spectrumTempSamplesI.FastCopyTo(bufferI, spectrumTempSamplesI.Length);
+            spectrumTempSamplesQ.FastCopyTo(bufferQ, spectrumTempSamplesQ.Length);
+
+            //Reset drawer ticker
+            currentDrawerTick = 0;
+
+            //DSP
+            ProcessSpectrum(spectrumTempSamplesI, spectrumTempSamplesQ);
+
+            if (enableProcess)
+                UpdateConstellation(bufferI, bufferQ, demodOutputI, demodOutputQ);
+        }
+
+        //更新频谱每行的bitmap
+        private void UpdateBitmap(int width)
+        {
+            spectrumCacheBitmap = new Bitmap(width, 1);
+            fftDataset = new double[FFT_POS][];
+            for (int i = 0; i < fftDataset.Length; i++)
+            {
+                fftDataset[i] = new double[SampleSource.WAV_BUFFER_SIZE];
+            }
+        }
+
+        //更新星座图
+        private void UpdateConstellation(float[] samplesReal, float[] samplesImag, float[] samplesRealDemod, float[] samplesImagDemod)
+        {
+            if (samplesReal == null || samplesImag == null || samplesReal.Length != samplesImag.Length)
+                return;
+
+            else if (samplesRealDemod == null || samplesImagDemod == null || samplesRealDemod.Length != samplesImagDemod.Length)
+                return;
+
+            //int sizeOfPointArr = (int)(1f * samplesReal.Length / constellationStepsize) + 1;
+            //if (pointsOfconstellation == null || pointsOfconstellation.Length != sizeOfPointArr)
+            //{
+            //    pointsOfconstellation = new Point[sizeOfPointArr];
+            //}
+            //for(int i = 0, j = 0; i < samplesReal.Length; i+=constellationStepsize, j++)
+            //{
+            //    if (i >= samplesReal.Length)
+            //        continue;
+            //    pointsOfconstellation[j] = new Point((int)(samplesReal[i] * constellationMultiply), (int)(samplesImag[i] * constellationMultiply));
+            //}
+
+            constellationBuffer.Write(samplesRealDemod, samplesImagDemod, demodOutputSize);
+
+            constellationOrigin.Draw((graphics) =>
+            {
+                for (int i = 0; i < samplesReal.Length; i += constellationStepsize)
+                {
+                    int x = (int)(samplesReal[i] * constellationMultiply) + 50;
+                    int y = (int)(samplesImag[i] * constellationMultiply) + 50;
+                    graphics.DrawRectangle(Pens.Green, x, y, 1, 1);
+                }
+            });
+
+            constellation.Draw((graphics) =>
+            {
+                for (int i = 0; i < constellationBuffer.Length; i += constellationStepsize)
+                {
+                    int x = (int)(constellationBuffer.BufferI[i] * constellationMultiply) + 50;
+                    int y = (int)(constellationBuffer.BufferQ[i] * constellationMultiply) + 50;
+                    graphics.DrawRectangle(Pens.Green, x, y, 1, 1);
+                }
+            });
+        }
+
+        //更新频谱
+        private void UpdateSpectrum(float maxFreq, int lengthReal, int lengthImag)
+        {
+            double[] actualProcess;
+
+            //FFT_RANGE < 0 means no range select.(Debug)
+            if (FFT_RANGE > 0)
+            {
+                actualProcess = magnitudeSpectrum[0..FFT_RANGE];
+            }
+            else
+            {
+                actualProcess = magnitudeSpectrum;
+            }
+
+            if (fftDatasetIndex >= FFT_POS)
+            {
+                fftDatasetIndex = 0;
+            }
+
+            //fftDataset.Add(actualProcess);
+            actualProcess.FastCopyTo(fftDataset[fftDatasetIndex], actualProcess.Length);
+            int readerIndex = fftDatasetIndex;
+            fftDatasetIndex++;
+
+            points = actualProcess
+                .Select((v, i) => new Point((int)(i * ((float)spectrum.Width / actualProcess.Length)), spectrum.Height - (int)(v * 2) - FFT_POS))
+                .ToArray();   // 将数据转换为一个个的坐标点
+
+            spectrum.Draw((graphics) =>
+            {
+                float samplesPerKHz = (1000 / freqPerSample);
+                float pixelsPerSample = ((float)spectrum.Width / actualProcess.Length);
+                float scaleCoeff = samplesPerKHz * pixelsPerSample;
+                int centerPos = spectrum.Width / 2;
+
+                //Spectrum
+                graphics.DrawLines(Pens.Black, points);   // 连接这些点, 画线
+
+                //Band-pass filter
+                if (enableFilter)
+                {
+                    int bpMin = frequencyShift - bandwidth / 2;
+                    int bpMax = frequencyShift + bandwidth / 2;
+
+                    graphics.DrawLine(Pens.LightCyan, new Point(centerPos + (int)(bpMin * scaleCoeff), 0), new Point(centerPos + (int)(bpMin * scaleCoeff), spectrum.Height - FFT_POS));
+                    graphics.DrawLine(Pens.LightCyan, new Point(centerPos + (int)(bpMax * scaleCoeff), 0), new Point(centerPos + (int)(bpMax * scaleCoeff), spectrum.Height - FFT_POS));
+                    graphics.FillRectangle(bfBrush, centerPos + (int)(bpMin * scaleCoeff), 0, (bpMax - bpMin) * scaleCoeff, spectrum.Height - FFT_POS);
+                }
+
+                if (bpskDemod != null)
+                {
+                    int freq = (int)bpskDemod.freqShift.Freq;
+                    graphics.DrawLine(Pens.Blue, new Point(centerPos + (int)(freq * scaleCoeff), 0), new Point(centerPos + (int)(freq * scaleCoeff), spectrum.Height - FFT_POS));
+                }
+
+                //Analyze
+                //不要担心这里编译器会帮你优化成StringBuilder的
+                graphics.DrawString(
+                    $"FFT[{FFT_SIZE}](Visualizing index range: {(FFT_RANGE < 0 ? "Unlimited" : " 0 - " + FFT_RANGE)} Freq: -{maxFreq / 2000}kHz - {maxFreq / 2000}kHz )" +
+                    $"\nInput Signal[Real {lengthReal}, Imag {lengthImag}]" +
+                    $"\nOutput FFT[{magnitudeSpectrum.Length}]" +
+                    $"\nBandwidth: {bandwidth}kHz, Frequency Shift: {frequencyShift}kHz" +
+                    $"\nTime {SampleSource.GetFormatedTimeString()}" +
+                    $"\nCostas Loop [freq = {bpskDemod.costasLoop.Phase}, phase = {bpskDemod.costasLoop.Phase}]" +
+                    $"\nClock Sync [mu = {bpskDemod.clockRecovery.Mu}, omega = {bpskDemod.clockRecovery.Omega}]",
+                    font, brush, new Point(5, 5));
+
+                //Separator
+                graphics.DrawLine(Pens.Black, new Point(0, spectrum.Height - FFT_POS), new Point(spectrum.Width, spectrum.Height - FFT_POS));
+
+                //Waterfall
+                for (int i = 0, j = readerIndex; i < fftDataset.Length; i++, j--)
+                {
+                    if (j < 0)
+                    {
+                        j = fftDataset.Length - 1;
+                    }
+                    //double[] data = fftDataset[^(i + 1)];
+                    double[] data = fftDataset[j];
+                    int lastX = -1;
+                    for (int k = 0; k < data.Length; k++)
+                    {
+                        int x = (int)(k * pixelsPerSample);
+                        if (x != lastX)
+                        {
+                            if (x > lastX + 1)
+                            {
+                                x = lastX + 1;
+                            }
+                            int value = (int)Math.Clamp(data[k] * 20, 0, 255);
+                            spectrumCacheBitmap.SetPixel(x, 0, Color.FromArgb(value, 0, 255 / 4));
+                            lastX = x;
+                        }
+                    }
+                    graphics.DrawImage(spectrumCacheBitmap, 0, spectrum.Height - (FFT_POS - 20) + i, spectrum.Width, 1);
+                }
+
+                //Scale
+                for (int i = 0; i < actualProcess.Length / 2; i += 100)
+                {
+                    if (i < actualProcess.Length - 1)
+                    {
+                        int xPos = (int)(i * ((float)spectrum.Width / actualProcess.Length));
+
+                        graphics.DrawLine(Pens.Black, new Point(centerPos + xPos, spectrum.Height - FFT_POS + 5), new Point(centerPos + xPos, spectrum.Height - FFT_POS));
+                        graphics.DrawString($"{(i * freqPerSample) / 1000}kHz", font, brush, new Point(centerPos + xPos, spectrum.Height - FFT_POS + 5));
+
+                        if (i != 0)
+                        {
+                            graphics.DrawLine(Pens.Black, new Point(centerPos - xPos, spectrum.Height - FFT_POS + 5), new Point(centerPos - xPos, spectrum.Height - FFT_POS));
+                            graphics.DrawString($"-{(i * freqPerSample) / 1000}kHz", font, brush, new Point(centerPos - xPos, spectrum.Height - FFT_POS + 5));
+                        }
+                    }
+                }
+
+                //Debug
+                if (pointsOfFilterI != null)
+                {
+                    graphics.DrawLines(Pens.Black, pointsOfFilterI);
+                }
+                if (pointsOfFilterQ != null)
+                {
+                    graphics.DrawLines(Pens.Black, pointsOfFilterQ);
+                }
+            });
+        }
+        #endregion
+
+        #region Process
         /// <summary>
         /// Process input samples
         /// </summary>
@@ -385,6 +565,7 @@ namespace RX_SSDV.DSP
                 UpdateSpectrum(maxFreq, realSignal.Length, imagSignal.Length);
             }
         }
+        #endregion
 
         public void ClearBPSKOutputArray()
         {
@@ -402,176 +583,6 @@ namespace RX_SSDV.DSP
                 demodOutputI = new float[demodOutputSize];
                 demodOutputQ = new float[demodOutputSize];
             }
-        }
-
-        private void UpdateConstellation(float[] samplesReal, float[] samplesImag, float[] samplesRealDemod, float[] samplesImagDemod)
-        {
-            if (samplesReal == null || samplesImag == null || samplesReal.Length != samplesImag.Length)
-                return;
-
-            else if (samplesRealDemod == null || samplesImagDemod == null || samplesRealDemod.Length != samplesImagDemod.Length)
-                return;
-
-            //int sizeOfPointArr = (int)(1f * samplesReal.Length / constellationStepsize) + 1;
-            //if (pointsOfconstellation == null || pointsOfconstellation.Length != sizeOfPointArr)
-            //{
-            //    pointsOfconstellation = new Point[sizeOfPointArr];
-            //}
-            //for(int i = 0, j = 0; i < samplesReal.Length; i+=constellationStepsize, j++)
-            //{
-            //    if (i >= samplesReal.Length)
-            //        continue;
-            //    pointsOfconstellation[j] = new Point((int)(samplesReal[i] * constellationMultiply), (int)(samplesImag[i] * constellationMultiply));
-            //}
-
-            constellationBuffer.Write(samplesRealDemod, samplesImagDemod, demodOutputSize);
-
-            constellationOrigin.Draw((graphics) =>
-            {
-                for (int i = 0; i < samplesReal.Length; i += constellationStepsize)
-                {
-                    int x = (int)(samplesReal[i] * constellationMultiply) + 50;
-                    int y = (int)(samplesImag[i] * constellationMultiply) + 50;
-                    graphics.DrawRectangle(Pens.Green, x, y, 1, 1);
-                }
-            });
-
-            constellation.Draw((graphics) =>
-            {
-                for (int i = 0; i < constellationBuffer.Length; i += constellationStepsize)
-                {
-                    int x = (int)(constellationBuffer.BufferI[i] * constellationMultiply) + 50;
-                    int y = (int)(constellationBuffer.BufferQ[i] * constellationMultiply) + 50;
-                    graphics.DrawRectangle(Pens.Green, x, y, 1, 1);
-                }
-            });
-        }
-
-        private void UpdateSpectrum(float maxFreq, int lengthReal, int lengthImag)
-        {
-            double[] actualProcess;
-
-            //FFT_RANGE < 0 means no range select.(Debug)
-            if (FFT_RANGE > 0)
-            {
-                actualProcess = magnitudeSpectrum[0..FFT_RANGE];
-            }
-            else
-            {
-                actualProcess = magnitudeSpectrum;
-            }
-
-            if (fftDatasetIndex >= FFT_POS)
-            {
-                fftDatasetIndex = 0;
-            }
-
-            //fftDataset.Add(actualProcess);
-            actualProcess.FastCopyTo(fftDataset[fftDatasetIndex], actualProcess.Length);
-            int readerIndex = fftDatasetIndex;
-            fftDatasetIndex++;
-
-            points = actualProcess
-                .Select((v, i) => new Point((int)(i * ((float)spectrum.Width / actualProcess.Length)), spectrum.Height - (int)(v * 2) - FFT_POS))
-                .ToArray();   // 将数据转换为一个个的坐标点
-
-            spectrum.Draw((graphics) =>
-            {
-                float samplesPerKHz = (1000 / freqPerSample);
-                float pixelsPerSample = ((float)spectrum.Width / actualProcess.Length);
-                float scaleCoeff = samplesPerKHz * pixelsPerSample;
-                int centerPos = spectrum.Width / 2;
-
-                //Spectrum
-                graphics.DrawLines(Pens.Black, points);   // 连接这些点, 画线
-
-                //Band-pass filter
-                if (enableFilter)
-                {
-                    int bpMin = frequencyShift - bandwidth / 2;
-                    int bpMax = frequencyShift + bandwidth / 2;
-
-                    graphics.DrawLine(Pens.LightCyan, new Point(centerPos + (int)(bpMin * scaleCoeff), 0), new Point(centerPos + (int)(bpMin * scaleCoeff), spectrum.Height - FFT_POS));
-                    graphics.DrawLine(Pens.LightCyan, new Point(centerPos + (int)(bpMax * scaleCoeff), 0), new Point(centerPos + (int)(bpMax * scaleCoeff), spectrum.Height - FFT_POS));
-                    graphics.FillRectangle(bfBrush, centerPos + (int)(bpMin * scaleCoeff), 0, (bpMax - bpMin) * scaleCoeff, spectrum.Height - FFT_POS);
-                }
-
-                if(bpskDemod != null)
-                {
-                    int freq = (int)bpskDemod.freqShift.Freq;
-                    graphics.DrawLine(Pens.Blue, new Point(centerPos + (int)(freq * scaleCoeff), 0), new Point(centerPos + (int)(freq * scaleCoeff), spectrum.Height - FFT_POS));
-                }
-
-                //Analyze
-                //不要担心这里编译器会帮你优化成StringBuilder的
-                graphics.DrawString(
-                    $"FFT[{FFT_SIZE}](Visualizing index range: {(FFT_RANGE < 0 ? "Unlimited" : " 0 - " + FFT_RANGE)} Freq: -{maxFreq / 2000}kHz - {maxFreq / 2000}kHz )" +
-                    $"\nInput Signal[Real {lengthReal}, Imag {lengthImag}]" +
-                    $"\nOutput FFT[{magnitudeSpectrum.Length}]" +
-                    $"\nBandwidth: {bandwidth}kHz, Frequency Shift: {frequencyShift}kHz" +
-                    $"\nTime {SampleSource.GetFormatedTimeString()}" +
-                    $"\nCostas Loop [freq = {bpskDemod.costasLoop.Phase}, phase = {bpskDemod.costasLoop.Phase}]" +
-                    $"\nClock Sync [mu = {bpskDemod.clockRecovery.Mu}, omega = {bpskDemod.clockRecovery.Omega}]",
-                    font, brush, new Point(5, 5));
-
-                //Separator
-                graphics.DrawLine(Pens.Black, new Point(0, spectrum.Height - FFT_POS), new Point(spectrum.Width, spectrum.Height - FFT_POS));
-
-                //Waterfall
-                for (int i = 0, j = readerIndex; i < fftDataset.Length; i++, j--)
-                {
-                    if(j < 0)
-                    {
-                        j = fftDataset.Length - 1;
-                    }
-                    //double[] data = fftDataset[^(i + 1)];
-                    double[] data = fftDataset[j];
-                    int lastX = -1;
-                    for (int k = 0; k < data.Length; k++)
-                    {
-                        int x = (int)(k * pixelsPerSample);
-                        if (x != lastX)
-                        {
-                            if (x > lastX + 1)
-                            {
-                                x = lastX + 1;
-                            }
-                            int value = (int)Math.Clamp(data[k] * 20, 0, 255);
-                            spectrumCacheBitmap.SetPixel(x, 0, Color.FromArgb(value, 0, 255 / 4));
-                            lastX = x;
-                        }
-                    }
-                    graphics.DrawImage(spectrumCacheBitmap, 0, spectrum.Height - (FFT_POS - 20) + i, spectrum.Width, 1);
-                }
-
-                //Scale
-                for (int i = 0; i < actualProcess.Length / 2; i += 100)
-                {
-                    if (i < actualProcess.Length - 1)
-                    {
-                        int xPos = (int)(i * ((float)spectrum.Width / actualProcess.Length));
-
-                        graphics.DrawLine(Pens.Black, new Point(centerPos + xPos, spectrum.Height - FFT_POS + 5), new Point(centerPos + xPos, spectrum.Height - FFT_POS));
-                        graphics.DrawString($"{(i * freqPerSample) / 1000}kHz", font, brush, new Point(centerPos + xPos, spectrum.Height - FFT_POS + 5));
-
-                        if (i != 0)
-                        {
-                            graphics.DrawLine(Pens.Black, new Point(centerPos - xPos, spectrum.Height - FFT_POS + 5), new Point(centerPos - xPos, spectrum.Height - FFT_POS));
-                            graphics.DrawString($"-{(i * freqPerSample) / 1000}kHz", font, brush, new Point(centerPos - xPos, spectrum.Height - FFT_POS + 5));
-                        }
-                    }
-                }
-
-                //Debug
-                if(pointsOfFilterI != null)
-                {
-                    graphics.DrawLines(Pens.Black, pointsOfFilterI);
-                }
-                if (pointsOfFilterQ != null)
-                {
-                    graphics.DrawLines(Pens.Black, pointsOfFilterQ);
-                }
-            });
         }
     }
 }
