@@ -8,6 +8,12 @@ namespace RX_SSDV.Utils
 {
     public class BinaryUtils
     {
+        /// <summary>
+        /// Read the binary value of an integer at a specific position.
+        /// </summary>
+        /// <param name="input">Input value</param>
+        /// <param name="pos">Specific Position</param>
+        /// <returns>The binary value</returns>
         public static byte ReadInt(int input, int pos)
         {
             //eg.
