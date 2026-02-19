@@ -2,6 +2,7 @@
 using NWaves.Filters.Base;
 using NWaves.Transforms;
 using NWaves.Utils;
+using RX_SSDV.CCSDS;
 using RX_SSDV.Graphic;
 using RX_SSDV.IO;
 using RX_SSDV.Utils;
@@ -103,6 +104,12 @@ namespace RX_SSDV.DSP
         private float[] demodOutputI;
         private float[] demodOutputQ;
         private int demodOutputSize;
+
+        //CCSDS Decode
+        public CCSDSDecoder ccsds;
+        private float[] decodeOutput;
+        private int decodeOutputSize;
+
         public float ConstellationMultiply
         {
             get
@@ -136,6 +143,7 @@ namespace RX_SSDV.DSP
         {
             fft = new Fft(FFT_SIZE);
             bpskDemod = new BpskDemod();
+            ccsds = new CCSDSDecoder();
 
             UpdateBitmap(spectrum.Width);
 
@@ -462,7 +470,10 @@ namespace RX_SSDV.DSP
             lock (lockObj)
             {
                 if (enableProcess)
+                {
                     ProcessBPSK(filteredSamplesI, filteredSamplesQ);
+                    ProcessCCSDS(demodOutputI, demodOutputQ);
+                }
 
                 //Prepare data for drawer
                 if (spectrumTempSamplesI == null || spectrumTempSamplesQ == null)
@@ -488,10 +499,17 @@ namespace RX_SSDV.DSP
         /// <param name="imagSignal">Input sample Q(Imag)</param>
         public void ProcessBPSK(float[] realSignal, float[] imagSignal)
         {
-            CheckBPSKOutputAvalible(realSignal.Length);
+            CheckBPSKOutputAvalible();
             //ClearBPSKOutputArray();
 
             bpskDemod.Process(realSignal, imagSignal, demodOutputI, demodOutputQ, out demodOutputSize);
+        }
+
+        public void ProcessCCSDS(float[] realSignal, float[] imagSignal)
+        {
+            CheckCCSDSOutputAvalible();
+
+            ccsds.Process(realSignal, imagSignal, decodeOutput, out decodeOutputSize);
         }
 
         /// <summary>
@@ -573,15 +591,26 @@ namespace RX_SSDV.DSP
             Array.Clear(demodOutputQ, 0, demodOutputQ.Length);
         }
 
-        public void CheckBPSKOutputAvalible(int inputSize)
+        public void CheckBPSKOutputAvalible()
         {
             //int demodOutputSize = bpskDemod.CalcOutputSize(inputSize);
-            int demodOutputSize = 2048;
+            const int demodOutputSize = 2048;
 
             if(ArrayUtil.CheckNeedUpdate(demodOutputI, demodOutputSize) || ArrayUtil.CheckNeedUpdate(demodOutputQ, demodOutputSize))
             {
                 demodOutputI = new float[demodOutputSize];
                 demodOutputQ = new float[demodOutputSize];
+            }
+        }
+
+        public void CheckCCSDSOutputAvalible()
+        {
+            //int demodOutputSize = bpskDemod.CalcOutputSize(inputSize);
+            const int decodeOutputSize = 2048;
+
+            if (ArrayUtil.CheckNeedUpdate(decodeOutput, decodeOutputSize))
+            {
+                decodeOutput = new float[decodeOutputSize];
             }
         }
     }

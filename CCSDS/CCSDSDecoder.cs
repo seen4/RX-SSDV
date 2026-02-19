@@ -1,0 +1,68 @@
+﻿using RX_SSDV.CCSDS.Viterbi;
+using RX_SSDV.Utils;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+using System;
+using NWaves.Utils;
+
+namespace RX_SSDV.CCSDS
+{
+    public class CCSDSDecoder
+    {
+        private Viterbi.Viterbi viterbiDecoder;
+
+        private float[] outBuffer1;
+        private float[] outBuffer2;
+
+        public CCSDSDecoder()
+        {
+            viterbiDecoder = new Viterbi.Viterbi();
+        }
+
+        public void HardDecision(float[] inputSamplesI, float[] inputSamplesQ, float[] outputBits)
+        {
+            for(int i = 0; i < inputSamplesI.Length; i++)
+            {
+                outputBits[i] = inputSamplesI[i] > 0 ? 1 : 0;
+            }
+        }
+
+        public void Process(float[] inputSamplesI, float[] inputSamplesQ, float[] outputBits, out int outputSize, int inputSize = -1)
+        {
+            inputSize = inputSize == -1 ? inputSamplesI.Length : inputSize;
+            if (inputSize <= 0)
+            {
+                throw new ArgumentException("'inputSize' must bigger than zero");
+            }
+
+            CheckProcessOutputArr(inputSize);
+
+            HardDecision(inputSamplesI, inputSamplesQ, outBuffer1);
+
+            outputSize = viterbiDecoder.Process(inputSize, outBuffer1, outBuffer2);
+            outBuffer2.FastCopyTo(outputBits, outputSize, 0, 0);
+
+            //outputSize = 1;
+        }
+
+        /// <summary>
+        /// Check output if arrays avalible, if not, init array(s) by 'arrSize'.
+        /// </summary>
+        /// <param name="arrSize">Array size</param>
+        public void CheckProcessOutputArr(int arrSize)
+        {
+            if (ArrayUtil.CheckNeedUpdate(outBuffer1, arrSize))
+            {
+                outBuffer1 = new float[arrSize];
+            }
+
+            if (ArrayUtil.CheckNeedUpdate(outBuffer2, arrSize))
+            {
+                outBuffer2 = new float[arrSize];
+            }
+        }
+    }
+}
