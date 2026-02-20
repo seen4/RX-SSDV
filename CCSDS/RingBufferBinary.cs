@@ -1,4 +1,5 @@
 ﻿using NWaves.Utils;
+using RX_SSDV.DSP;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Printing;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RX_SSDV.DSP
+namespace RX_SSDV.CCSDS
 {
     /// <summary>
     /// Single array version of <see cref="RingBufferIQ"/>
