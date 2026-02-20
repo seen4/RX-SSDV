@@ -114,7 +114,7 @@
             </TabItem>
             <TabItem Header="{DynamicResource MainWindow_TabLog}" d:Header="Log">
                 <ScrollViewer Margin="5">
-                    <TextBlock Name="logText" Text="" Margin="0" FontFamily="Cascadia Code"/>
+                    <TextBox Name="logText" IsReadOnly="True" Text="" Margin="0" FontFamily="Cascadia Code"/>
                 </ScrollViewer>
             </TabItem>
         </TabControl>
