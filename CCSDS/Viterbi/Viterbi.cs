@@ -27,7 +27,7 @@ namespace RX_SSDV.CCSDS.Viterbi
         private int constraintLength = 1;
         public int ConstraintLength => constraintLength;
 
-        private Trellis trellis;
+        public Trellis trellis;
 
         public Viterbi() 
         {
@@ -85,7 +85,7 @@ namespace RX_SSDV.CCSDS.Viterbi
                 outputSize++;
             }
 
-            trellis.ClearTrellis();
+            trellis.CleanUpTrellis();
             Array.Reverse(outputArr, 0, outputSize);
 
             CompleteProcess(processedCount);

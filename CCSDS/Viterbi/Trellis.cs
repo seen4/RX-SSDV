@@ -14,6 +14,7 @@ namespace RX_SSDV.CCSDS.Viterbi
         private int stateCount;
 
         private int[,] branchOutputs;
+        public int[,] BranchOutputs => branchOutputs;
 
         public List<int> stateList;
         public int[] pathDst;
@@ -93,6 +94,18 @@ namespace RX_SSDV.CCSDS.Viterbi
             Array.Clear(newPathDst, 0, pathDst.Length);
         }
 
+        public void CleanUpTrellis()
+        {
+            stateList.Clear();
+            Array.Clear(newPathDst, 0, pathDst.Length);
+
+            int minPath = MinPath.Item2;
+            for(int i = 0; i < pathDst.Length; i++)
+            {
+                pathDst[i] -= minPath;
+            }
+        }
+
         /// <summary>
         /// Update surviving path.
         /// </summary>
@@ -119,7 +132,7 @@ namespace RX_SSDV.CCSDS.Viterbi
         /// <returns>The minimum Hamming distance and the state</returns>
         public ValueTuple<int, int> SurvivingPath(byte bits, int state)
         {
-            (int, int) nextstatees = CalcSourcestatees(state, viterbi.Constraint);
+            (int, int) nextstatees = CalcSourcestates(state, viterbi.Constraint);
             int sourcestate1 = nextstatees.Item1;
             int sourcestate2 = nextstatees.Item2;
 
@@ -160,7 +173,7 @@ namespace RX_SSDV.CCSDS.Viterbi
         /// <param name="constraint">Constraint of the state</param>
         /// <returns>Next statees</returns>
         /// </summary>
-        public static (int, int) CalcNextstatees(int state, int constraint)
+        public static (int, int) CalcNextstates(int state, int constraint)
         {
             int s = (state & ((1 << (constraint - 2)) - 1)) << 1;
             return (s | 0, s | 1);
@@ -172,7 +185,7 @@ namespace RX_SSDV.CCSDS.Viterbi
         /// <param name="constraint">Constraint of the state</param>
         /// <returns>Next statees</returns>
         /// </summary>
-        public static (int, int) CalcSourcestatees(int state, int constraint)
+        public static (int, int) CalcSourcestates(int state, int constraint)
         {
             int s = state >> 1;
             //return (s | (0 << (constraint - 2)), s | (1 << (constraint - 2));
