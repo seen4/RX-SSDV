@@ -1,5 +1,6 @@
 ﻿using NAudio.Wave;
 using NWaves.Effects.Stereo;
+using RX_SSDV.Base;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -54,12 +55,15 @@ namespace RX_SSDV.IO
             isSourceAvalible = true;
 
             ReadSampleDirect();
+
+            Logger.LogInfo("[SampleSource]Playing");
             //PlayAudio();
         }
 
         public static void Pause()
         {
             PauseDirectRead();
+            Logger.LogInfo("[SampleSource]Paused");
             //PauseAudio();
         }
 
@@ -67,6 +71,7 @@ namespace RX_SSDV.IO
         {
             StopDirectRead();
             isSourceAvalible = false;
+            Logger.LogInfo("[SampleSource]Stopped");
             //StopAudio();
         }
 
@@ -166,8 +171,6 @@ namespace RX_SSDV.IO
 
             onSourceChange(sampleAggregator.WaveFormat);
         }
-
-
 
         public static void PauseAudio()
         {

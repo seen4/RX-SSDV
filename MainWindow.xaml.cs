@@ -1,4 +1,5 @@
 ﻿using RX_SSDV.Base;
+using RX_SSDV.CCSDS;
 using RX_SSDV.DSP;
 using RX_SSDV.Graphic;
 using RX_SSDV.IO;
@@ -14,6 +15,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Application = System.Windows.Forms.Application;
 
 namespace RX_SSDV
 {
@@ -23,6 +25,7 @@ namespace RX_SSDV
     public partial class MainWindow : Window
     {
         private static MainWindow instance;
+
         public static MainWindow Instance
         {
             get
@@ -44,15 +47,23 @@ namespace RX_SSDV
             instance = this;
             SizeChanged += OnWindowsSizeChange;
 
+            LogLogo();
+            Logger.Log("[I] Initializing components...");
             InitializeComponent();
+            Logger.Log(" done\n");
+            Logger.Instance.logDisplay = logText;
+
             Init();
         }
 
         private void Init()
         {
+            Logger.Log("[I] Starting up...");
             Settings.ApplySettings(); //init language
+
             InitDrawer();
             InitDSP();
+            Logger.Log(" done\n");
         }
 
         private void InitDSP()
@@ -74,6 +85,18 @@ namespace RX_SSDV
             freqShiftInput.Text = mainDSP.frequencyShift.ToString();
             drawerPeriodInput.Text = mainDSP.spectrumPeriod.ToString();
             constellationScaleBox.Text = mainDSP.ConstellationMultiply.ToString();
+        }
+
+        private void LogLogo()
+        {
+            Logger.Log(@"  ____   __  __          ____    ____    ____   __     __" + "\n" +
+                       @" |  _ \  \ \/ /         / ___|  / ___|  |  _ \  \ \   / /" + "\n" +
+                       @" | |_) |  \  /   _____  \___ \  \___ \  | | | |  \ \ / / " + "\n" +
+                       @" |  _ <   /  \  |_____|  ___) |  ___) | | |_| |   \ V /  " + "\n" +
+                       @" |_| \_\ /_/\_\         |____/  |____/  |____/     \_/   " + "\n" +
+                       @"                                  " + "\n");
+            Logger.Log($"RX-SSDV ver. {Application.ProductVersion}\n");
+            Logger.Log($"By AstarLC(BI2QXZ), Polygone_(BG5JSB)\n\n");
         }
 
         private void OnWindowsSizeChange(object sender, SizeChangedEventArgs arg)
