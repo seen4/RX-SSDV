@@ -30,8 +30,11 @@ namespace RX_SSDV.CCSDS
             historyBuffer = new RingBufferBinary(bufferSize);
         }
 
-        public virtual void Process(float[] inputArr,  float[] outArr, int inputSize)
+        public virtual void Process(float[] inputArr, float[] outArr, int inputSize)
         {
+            if (inputSize > inputArr.Length)
+                throw new ArgumentException("'inputSize' is too big!");
+
             historyBuffer.Write(inputArr, inputSize);
         }
 

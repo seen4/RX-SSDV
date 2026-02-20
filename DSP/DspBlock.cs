@@ -36,6 +36,9 @@ namespace RX_SSDV.DSP
                 throw new ArgumentException("outputSamplesI.Length must equals outputSamplesQ.Length");
             }
 
+            if (inputSize > inputSamplesI.Length)
+                throw new ArgumentException("'inputSize' is too big!");
+
             historyBuffer.Write(inputSamplesI, inputSamplesQ, inputSize);
         }
 
