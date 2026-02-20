@@ -75,12 +75,12 @@ namespace RX_SSDV.CCSDS.Viterbi
             }
 
             //Traceback
-            int status = trellis.MinPath.Item1;
-            for (int i = trellis.statusList.Count - trellis.StatusCount; i >= 0; i -= trellis.StatusCount)
+            int state = trellis.MinPath.Item1;
+            for (int i = trellis.stateList.Count - trellis.StateCount; i >= 0; i -= trellis.StateCount)
             {
-                int input = ReadInt(status, 1); //Read input code from current status
+                int input = ReadInt(state, 1); //Read input code from current state
                 outputArr[outputSize] = input; //Output
-                status = trellis.statusList[i + status]; //Find previous status of current status 
+                state = trellis.stateList[i + state]; //Find previous state of current state 
 
                 outputSize++;
             }
