@@ -3,6 +3,8 @@ using RX_SSDV.CCSDS;
 using RX_SSDV.DSP;
 using RX_SSDV.Graphic;
 using RX_SSDV.IO;
+using RX_SSDV.Test;
+using RX_SSDV.Utils;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -54,6 +56,9 @@ namespace RX_SSDV
             Logger.Instance.logDisplay = logText;
 
             Init();
+
+            ViterbiTest test = new ViterbiTest();
+            test.Test();
         }
 
         private void Init()
