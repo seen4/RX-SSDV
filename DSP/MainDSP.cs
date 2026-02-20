@@ -509,7 +509,7 @@ namespace RX_SSDV.DSP
         {
             CheckCCSDSOutputAvalible();
 
-            ccsds.Process(realSignal, imagSignal, decodeOutput, out decodeOutputSize);
+            ccsds.Process(realSignal, imagSignal, decodeOutput, out decodeOutputSize, demodOutputSize);
         }
 
         /// <summary>

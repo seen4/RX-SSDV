@@ -13,6 +13,7 @@ namespace RX_SSDV.CCSDS
     public class CCSDSDecoder
     {
         private Viterbi.Viterbi viterbiDecoder;
+        private FrameSync sync;
 
         private float[] outBuffer1;
         private float[] outBuffer2;
@@ -20,11 +21,18 @@ namespace RX_SSDV.CCSDS
         public CCSDSDecoder()
         {
             viterbiDecoder = new Viterbi.Viterbi();
+            sync = new FrameSync();
         }
 
-        public void HardDecision(float[] inputSamplesI, float[] inputSamplesQ, float[] outputBits)
+        public void HardDecision(float[] inputSamplesI, float[] inputSamplesQ, float[] outputBits, int inputSize = -1)
         {
-            for(int i = 0; i < inputSamplesI.Length; i++)
+            inputSize = inputSize == -1 ? inputSamplesI.Length : inputSize;
+            if (inputSize <= 0)
+            {
+                throw new ArgumentException("'inputSize' must bigger than zero");
+            }
+
+            for (int i = 0; i < inputSize; i++)
             {
                 outputBits[i] = inputSamplesI[i] > 0 ? 1 : 0;
             }
@@ -38,11 +46,12 @@ namespace RX_SSDV.CCSDS
                 throw new ArgumentException("'inputSize' must bigger than zero");
             }
 
-            CheckProcessOutputArr(inputSize);
+            CheckProcessOutputArr(inputSamplesI.Length);
 
-            HardDecision(inputSamplesI, inputSamplesQ, outBuffer1);
+            HardDecision(inputSamplesI, inputSamplesQ, outBuffer1, inputSize);
 
             outputSize = viterbiDecoder.Process(inputSize, outBuffer1, outBuffer2);
+            sync.Process(outputSize, outBuffer2, outBuffer1);
             outBuffer2.FastCopyTo(outputBits, outputSize, 0, 0);
 
             //outputSize = 1;
