@@ -17,23 +17,32 @@ namespace RX_SSDV.Test
         public float[] inputArray;
         public float[] outputArray;
         public int outputSize;
-        public int sampleCount = 640;
+        public int sampleCount = 320;
 
         private int generatorState = 0;
 
         public void Test()
         {
             Logger.LogInfo("Running Viterbi Test...");
+
             Logger.LogInfo("GROUP 1");
             GenerateInput(10);
             Decode();
-
             PrintResult();
 
             Logger.LogInfo("GROUP 2");
             GenerateInput(1);
             Decode();
+            PrintResult();
 
+            Logger.LogInfo("GROUP RAND 1");
+            GenerateInputRand();
+            Decode();
+            PrintResult();
+
+            Logger.LogInfo("GROUP RAND 2");
+            GenerateInputRand();
+            Decode();
             PrintResult();
         }
 
@@ -72,9 +81,14 @@ namespace RX_SSDV.Test
             }
             count = 0;
             sb.Clear();
+
+            int err = 0;
             Logger.LogInfo($"Output array");
             for (int i = 0; i < outputSize; i++)
             {
+                if (inputDataArray[i] != outputArray[i])
+                    err++;
+
                 sb.Append(outputArray[i]);
                 count++;
 
@@ -85,12 +99,15 @@ namespace RX_SSDV.Test
                     sb.Clear();
                 }
             }
+
+            Logger.LogInfo($"Errors: {err}/{inputDataArray.Length}, Error rate: { ((float)err / inputDataArray.Length) * 100}%");
         }
 
         public void GenerateInput(int modPtr = 10)
         {
             inputArray = new float[sampleCount * 2];
             inputDataArray = new float[sampleCount];
+            //generatorState = 0;
 
             int decisionPtr = 0;
             for (int i = 0; i < sampleCount * 2; i+=2)
@@ -98,15 +115,16 @@ namespace RX_SSDV.Test
                 int mod = decisionPtr % 2;
                 if(i % modPtr == 0)
                     decisionPtr++;
+
                 //Logger.LogInfo(mod.ToString());
 
                 int input = 0;
                 if (mod == 0)
                 {
-                    input = viterbi.trellis.BranchOutputs[generatorState, 0];
+                    input = viterbi.BranchOutputs[generatorState, 0];
 
                     //Next state
-                    (int, int) nextState = Trellis.CalcNextstates(generatorState, viterbi.Constraint);
+                    (int, int) nextState = Trellis.CalcNextStates(generatorState, viterbi.Constraint);
                     generatorState = nextState.Item1;
                     inputDataArray[i / 2] = 0;
 
@@ -114,12 +132,48 @@ namespace RX_SSDV.Test
                 }
                 else
                 {
-                    input = viterbi.trellis.BranchOutputs[generatorState, 1];
+                    input = viterbi.BranchOutputs[generatorState, 1];
 
                     //Next state
-                    (int, int) nextState = Trellis.CalcNextstates(generatorState, viterbi.Constraint);
+                    (int, int) nextState = Trellis.CalcNextStates(generatorState, viterbi.Constraint);
                     generatorState = nextState.Item2;
                     inputDataArray[i / 2] = 1;
+                }
+
+                //Write
+                inputArray[i] = BinaryUtils.ReadInt(input, 1);
+                inputArray[i + 1] = BinaryUtils.ReadInt(input, 2);
+            }
+        }
+
+        public void GenerateInputRand()
+        {
+            inputArray = new float[sampleCount * 2];
+            inputDataArray = new float[sampleCount];
+            //generatorState = 0;
+
+            Random random = new Random();
+
+            for (int i = 0, j = 0; i < sampleCount * 2; i += 2, j++)
+            {
+                int rand = random.Next(2);
+
+                int input = 0;
+
+                (int, int) nextState = Trellis.CalcNextStates(generatorState, viterbi.Constraint);
+                //Logger.LogInfo($"{Trellis.CalcSourceStates(0b_101011, 7).Item1.ToString("B6")}");
+
+                if (rand == 0)
+                {
+                    input = viterbi.BranchOutputs[generatorState, 0];
+                    generatorState = nextState.Item1;
+                    inputDataArray[j] = 0;
+                }
+                else
+                {
+                    input = viterbi.BranchOutputs[generatorState, 1];
+                    generatorState = nextState.Item2;
+                    inputDataArray[j] = 1;
                 }
 
                 //Write
