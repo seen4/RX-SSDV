@@ -67,11 +67,8 @@ namespace RX_SSDV.DSP
             ouc = 0;
             inc = 0;
 
-            for (; ouc < outputSamplesI.Length && inc < inputSize;)
+            for (; ouc < outputSamplesI.Length && inc < inputSize && inc + nTapsInterpolator < historyBuffer.Length && inc + omega < historyBuffer.Length; )
             {
-                if (inc + nTapsInterpolator >= historyBuffer.Length)
-                    break;
-
                 // Propagate delay
                 p_2T = p_1T;
                 p_1T = p_0T;

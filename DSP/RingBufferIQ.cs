@@ -66,6 +66,8 @@ namespace RX_SSDV.DSP
         {
             if (delta < 0)
                 throw new ArgumentException("'delta' must greater than zero");
+            if (delta < 0)
+                throw new InvalidOperationException("'delta' must smaller than 'availableDataCount'");
 
             outputIndex += delta;
 
@@ -74,18 +76,32 @@ namespace RX_SSDV.DSP
                 outputIndex -= bufferSize;
             }
 
-            UpdateDataCount();
+            if (availableDataCount > 0)
+            {
+                availableDataCount -= delta;
+            }
+
+            if (availableDataCount < 0)
+            {
+                availableDataCount = 0;
+            }
+
+            //UpdateDataCount();
         }
 
         public void UpdateDataCount()
         {
-            if(inputIndex >= outputIndex)
+            if(inputIndex > outputIndex)
             {
-                availableDataCount = inputIndex - outputIndex + 1;
+                availableDataCount = inputIndex - outputIndex;
+            }
+            else if (availableDataCount < outputIndex)
+            {
+                availableDataCount = bufferSize - (outputIndex - inputIndex);
             }
             else
             {
-                availableDataCount = bufferSize - (outputIndex - inputIndex) + 1;
+                availableDataCount = 0;
             }
         }
 
@@ -95,6 +111,8 @@ namespace RX_SSDV.DSP
                 throw new ArgumentException("inputSamplesI.Length must equals inputSamplesQ.Length");
             if (length > inputSamplesI.Length)
                 throw new ArgumentException("The 'length' is to big.");
+            if (length > bufferSize)
+                throw new ArgumentException("Write length cannot exceed buffer size.");
 
             int remainedSpace = bufferSize - inputIndex;
             int inputLength = length;
@@ -103,6 +121,9 @@ namespace RX_SSDV.DSP
                 inputSamplesI.FastCopyTo(bufferI, inputLength, 0, inputIndex);
                 inputSamplesQ.FastCopyTo(bufferQ, inputLength, 0, inputIndex);
                 inputIndex += inputLength;
+
+                if (inputIndex == bufferSize)
+                    inputIndex = 0;
             }
             else
             {

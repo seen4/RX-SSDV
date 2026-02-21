@@ -20,10 +20,10 @@ namespace RX_SSDV.DSP
         public ComplexFirFilter rrcFilter;
         public FreqShift freqShift;
 
-        private float[] outBufferI_1;
-        private float[] outBufferQ_1;
-        private float[] outBufferI_2;
-        private float[] outBufferQ_2;
+        private float[] outputBufferI;
+        private float[] outputBufferQ;
+        private float[] inputBufferI;
+        private float[] inputBufferQ;
 
         private static float imaginaryPoint = 1;
 
@@ -117,6 +117,17 @@ namespace RX_SSDV.DSP
             clockRecovery = new ClockRecoveryBlock_MM(0.5f, 0.175f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f);
         }
 
+        private void ConfigureOutput()
+        {
+            float[] temp = outputBufferI;
+            outputBufferI = inputBufferI;
+            inputBufferI = temp;
+
+            temp = outputBufferQ;
+            outputBufferQ = inputBufferQ;
+            inputBufferQ = temp;
+        }
+
         /// <summary>
         /// Process BPSK demodulation.
         /// </summary>
@@ -132,11 +143,14 @@ namespace RX_SSDV.DSP
             CheckBlocks();
 
             //rrcFilter.ProcessOnline(realSignal, imagSignal, outBufferI_1, outBufferQ_1);
-            freqShift.Process(realSignal.Length, realSignal, imagSignal, outBufferI_1, outBufferQ_1);
+            freqShift.Process(realSignal.Length, realSignal, imagSignal, outputBufferI, outputBufferQ);
+            ConfigureOutput();
 
-            int costasOutputSize = costasLoop.Process(realSignal.Length, outBufferI_1, outBufferQ_1, outBufferI_2, outBufferQ_2);
+            int costasOutputSize = costasLoop.Process(realSignal.Length, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
+            ConfigureOutput();
 
-            int clockOutputSize = clockRecovery.Process(costasOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
+            int clockOutputSize = clockRecovery.Process(costasOutputSize, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
+            //ConfigureOutput();
 
             //int agcOutputSize = agc.Process(clockOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
 
@@ -144,9 +158,9 @@ namespace RX_SSDV.DSP
 
             outputCount = clockOutputSize;
             //outputCount = realSignal.Length;
-            
-            outBufferI_1.FastCopyTo(outReal, outputCount);
-            outBufferQ_1.FastCopyTo(outImag, outputCount);
+
+            outputBufferI.FastCopyTo(outReal, outputCount);
+            outputBufferQ.FastCopyTo(outImag, outputCount);
             //outBufferI_2.FastCopyTo(outReal, clockOutputSize);
             //outBufferQ_2.FastCopyTo(outImag, clockOutputSize);
         }
@@ -211,16 +225,16 @@ namespace RX_SSDV.DSP
         /// <param name="arrSize">Array size</param>
         public void CheckProcessOutputArr(int arrSize)
         {
-            if (ArrayUtil.CheckNeedUpdate(outBufferI_1, arrSize) || ArrayUtil.CheckNeedUpdate(outBufferQ_1, arrSize))
+            if (ArrayUtil.CheckNeedUpdate(inputBufferI, arrSize) || ArrayUtil.CheckNeedUpdate(inputBufferQ, arrSize))
             {
-                outBufferI_1 = new float[arrSize];
-                outBufferQ_1 = new float[arrSize];
+                inputBufferI = new float[arrSize];
+                inputBufferQ = new float[arrSize];
             }
 
-            if (ArrayUtil.CheckNeedUpdate(outBufferI_2, arrSize) || ArrayUtil.CheckNeedUpdate(outBufferQ_2, arrSize))
+            if (ArrayUtil.CheckNeedUpdate(outputBufferI, arrSize) || ArrayUtil.CheckNeedUpdate(outputBufferQ, arrSize))
             {
-                outBufferI_2 = new float[arrSize];
-                outBufferQ_2 = new float[arrSize];
+                outputBufferI = new float[arrSize];
+                outputBufferQ = new float[arrSize];
             }
         }
 
