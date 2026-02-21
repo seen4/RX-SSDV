@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -49,6 +50,17 @@ namespace RX_SSDV.Utils
             input ^= input >> 2;
             input ^= input >> 1;
             return input & 1;
+        }
+
+        public static int HammingDst(int x, int y)
+        {
+            return HammingDst((uint)x, (uint)y);
+        }
+
+        public static int HammingDst(uint x, uint y)
+        {
+            uint xor = x ^ y;
+            return BitOperations.PopCount(xor);
         }
     }
 }
