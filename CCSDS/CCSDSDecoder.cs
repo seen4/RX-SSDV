@@ -14,14 +14,33 @@ namespace RX_SSDV.CCSDS
     {
         private Viterbi.Viterbi viterbiDecoder;
         private FrameSync sync;
+        private MDecoder mDecoder;
+        private BitDelay delay;
 
-        private float[] outBuffer1;
-        private float[] outBuffer2;
+        private bool useMDecode = false;
 
-        public CCSDSDecoder()
+        private float[] inputBuffer;
+        private float[] outputBuffer;
+
+        public CCSDSDecoder(bool useMDecode)
+        {
+            InitProcessingFlow();
+            this.useMDecode = useMDecode;
+        }
+
+        public void InitProcessingFlow()
         {
             viterbiDecoder = new Viterbi.Viterbi();
+            mDecoder = new MDecoder();
+            delay = new BitDelay(1);
             sync = new FrameSync();
+        }
+
+        private void ConfigureOutput()
+        {
+            float[] temp = outputBuffer;
+            outputBuffer = inputBuffer;
+            inputBuffer = temp;
         }
 
         public void HardDecision(float[] inputSamplesI, float[] inputSamplesQ, float[] outputBits, int inputSize = -1)
@@ -48,13 +67,25 @@ namespace RX_SSDV.CCSDS
 
             CheckProcessOutputArr(inputSamplesI.Length);
 
-            HardDecision(inputSamplesI, inputSamplesQ, outBuffer1, inputSize);
+            HardDecision(inputSamplesI, inputSamplesQ, outputBuffer, inputSize);
+            ConfigureOutput();
 
-            outputSize = viterbiDecoder.Process(inputSize, outBuffer1, outBuffer2);
-            sync.Process(outputSize, outBuffer2, outBuffer1);
-            outBuffer2.FastCopyTo(outputBits, outputSize, 0, 0);
+            int viterbiOutputSize = viterbiDecoder.Process(inputSize, inputBuffer, outputBuffer);
+            ConfigureOutput();
 
-            //outputSize = 1;
+            int mDecodeOutputSize = viterbiOutputSize;
+            if(useMDecode)
+            {
+                mDecodeOutputSize = mDecoder.Process(viterbiOutputSize, inputBuffer, outputBuffer);
+                ConfigureOutput();
+            }
+
+            outputSize = mDecodeOutputSize;
+
+            sync.Process(outputSize, inputBuffer, outputBuffer);
+            //ConfigureOutput();
+
+            outputBuffer.FastCopyTo(outputBits, outputSize, 0, 0);
         }
 
         /// <summary>
@@ -63,14 +94,14 @@ namespace RX_SSDV.CCSDS
         /// <param name="arrSize">Array size</param>
         public void CheckProcessOutputArr(int arrSize)
         {
-            if (ArrayUtil.CheckNeedUpdate(outBuffer1, arrSize))
+            if (ArrayUtil.CheckNeedUpdate(outputBuffer, arrSize))
             {
-                outBuffer1 = new float[arrSize];
+                outputBuffer = new float[arrSize];
             }
 
-            if (ArrayUtil.CheckNeedUpdate(outBuffer2, arrSize))
+            if (ArrayUtil.CheckNeedUpdate(inputBuffer, arrSize))
             {
-                outBuffer2 = new float[arrSize];
+                inputBuffer = new float[arrSize];
             }
         }
     }

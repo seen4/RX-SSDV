@@ -1,4 +1,5 @@
 ﻿using RX_SSDV.Base;
+using RX_SSDV.Utils;
 using System;
 using System.CodeDom;
 using System.Collections.Generic;
@@ -12,7 +13,7 @@ namespace RX_SSDV.CCSDS
     {
         public const uint syncHead = 0x1ACFFC1D; //0b_0001_1010_1100_1111_1111_1100_0001_1101
         public const uint ssdvSyncSymbol = 0x0322; //0b_0011_0010_0010
-        public const int syncSymbolSize = 12;
+        public const int syncSymbolSize = 32;
 
         public FrameSync() { }
 
@@ -21,7 +22,7 @@ namespace RX_SSDV.CCSDS
             base.Process(inputArr, outputArr, inputSize);
 
             int processedCount = 0;
-            for (int i = 0; i < inputSize && i + syncSymbolSize <= historyBuffer.Length; i++)
+            for (int i = 0; i + syncSymbolSize <= historyBuffer.Length; i++)
             {
                 processedCount++;
 
@@ -34,7 +35,7 @@ namespace RX_SSDV.CCSDS
 
                 //Logger.CLogInfo("[FrameSync-Debug]" + Convert.ToString(window, 2));
 
-                if (syncHead == window || syncHead == ~window)
+                if (BinaryUtils.HammingDst(syncHead,window) <= 1 || BinaryUtils.HammingDst(syncHead, ~window) <= 1)
                 {
                     Logger.CLogInfo($"[FrameSync-Debug]Synced at {i}");
                 }

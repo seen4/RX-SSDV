@@ -70,9 +70,9 @@ namespace RX_SSDV.CCSDS.Viterbi
             int outputSize = 0, processedCount = 0;
 
             //Generate trellis
-            for (int i = 0; i < inputSize; i += n)
+            for (int i = 0; i < historyBuffer.Length; i += n)
             {
-                if (i + 1 > inputSize - 1)
+                if (i + 1 > historyBuffer.Length - 1)
                     break;
 
                 //Get input
