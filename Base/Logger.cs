@@ -21,7 +21,7 @@ namespace RX_SSDV.Base
             }
         }
 
-        public TextBlock logDisplay;
+        public TextBox logDisplay;
 
         private StringBuilder logTextBuilder;
         public string logText;
@@ -31,7 +31,7 @@ namespace RX_SSDV.Base
             logTextBuilder = new StringBuilder();
         }
 
-        public Logger(TextBlock logDisplay)
+        public Logger(TextBox logDisplay)
         {
             this.logDisplay = logDisplay;
             logTextBuilder = new StringBuilder();
