@@ -104,5 +104,51 @@ namespace RX_SSDV.Base
             Instance.logTextBuilder.Clear();
             UpdateLogText();
         }
+
+        public static void PrintArr(float[] arrInput, int arrSize, string msg)
+        {
+            StringBuilder sb = new StringBuilder();
+            int count = 0;
+
+            LogInfo("arr " + msg);
+            for (int i = 0; i < arrSize; i++)
+            {
+                sb.Append(arrInput[i]);
+                count++;
+
+                if (count >= 32)
+                {
+                    count = 0;
+                    LogInfo(sb.ToString());
+                    sb.Clear();
+                }
+            }
+            count = 0;
+            LogInfo(sb.ToString());
+            sb.Clear();
+        }
+
+        public static void CPrintArr(float[] arrInput, int arrSize, string msg)
+        {
+            StringBuilder sb = new StringBuilder();
+            int count = 0;
+
+            CLogInfo("arr " + msg);
+            for (int i = 0; i < arrSize; i++)
+            {
+                sb.Append(arrInput[i]);
+                count++;
+
+                if (count >= 32)
+                {
+                    count = 0;
+                    CLogInfo(sb.ToString());
+                    sb.Clear();
+                }
+            }
+            count = 0;
+            CLogInfo(sb.ToString());
+            sb.Clear();
+        }
     }
 }
