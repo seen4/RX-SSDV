@@ -35,11 +35,11 @@ namespace RX_SSDV.CCSDS
 
                 //Logger.CLogInfo("[FrameSync-Debug]" + Convert.ToString(window, 2));
 
-                if (BinaryUtils.HammingDst(CCSDS_ASM, window) <= 1 || BinaryUtils.HammingDst(CCSDS_ASM, ~window) <= 1)
+                if ((BinaryUtils.HammingDst(CCSDS_ASM, window) <= 1 || BinaryUtils.HammingDst(CCSDS_ASM, ~window) <= 1) && syncSymbolSize == 32)
                 {
                     Logger.CLogInfo($"[FrameSync-Debug]Synced ASM at {i}");
                 }
-                else if (ssdvSyncSymbol == window || ssdvSyncSymbol == ~window)
+                else if ((ssdvSyncSymbol == window || ssdvSyncSymbol == ~window) && syncSymbolSize == 12)
                 {
                     Logger.CLogInfo($"[FrameSync-Debug]Synced SSDV at {i}");
                 }

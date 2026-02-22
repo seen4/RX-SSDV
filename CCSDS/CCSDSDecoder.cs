@@ -28,6 +28,8 @@ namespace RX_SSDV.CCSDS
 
         private float[] hardDecisionBits;
 
+        bool dbg = true;
+
         public CCSDSDecoder(bool useMDecode)
         {
             InitProcessingFlow();
@@ -81,6 +83,10 @@ namespace RX_SSDV.CCSDS
             HardDecision(inputSamplesI, inputSamplesQ, hardDecisionBits, inputSize);
 
             int viterbiOutputSize = viterbiDecoder.Process(inputSize, hardDecisionBits, outputBuffer);
+            if (dbg)
+            {
+                Logger.CPrintArr(outputBuffer, viterbiOutputSize, "Viterbi Delay 0");
+            }
             ConfigureOutput();
 
             int mDecodeOutputSize = viterbiOutputSize;
@@ -94,10 +100,15 @@ namespace RX_SSDV.CCSDS
             ConfigureOutput();
 
             //Branch Delay
-            delay.Process(inputSize, hardDecisionBits, outputBits);
+            delay.Process(inputSize, hardDecisionBits, outputBuffer);
             ConfigureOutput();
 
             int viterbiOutputSizeD = viterbiDecoderD.Process(inputSize, inputBuffer, outputBuffer);
+            if (dbg)
+            {
+                Logger.CPrintArr(outputBuffer, viterbiOutputSizeD, "Viterbi Delay 1");
+                dbg = false;
+            }
             ConfigureOutput();
 
             int mDecodeOutputSizeD = viterbiOutputSizeD;
