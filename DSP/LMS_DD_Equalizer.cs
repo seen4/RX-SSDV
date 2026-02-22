@@ -109,7 +109,10 @@ namespace RX_SSDV.DSP
                 Complex error = CalcError(sample);
                 for (int k = 0; k < _kernelSize; k++)
                 {
-                    Complex deltaTap = CalcTap(inputSample, error);
+                    float inI = _delayLineI[k];
+                    float inQ = _delayLineQ[k];
+                    Complex input = new Complex(inI, inQ);
+                    Complex deltaTap = CalcTap(input, error);
                     float deltaI = (float)deltaTap.Real;
                     float deltaQ = (float)deltaTap.Imaginary;
                     _bI[k] += deltaI;
