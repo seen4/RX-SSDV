@@ -11,7 +11,7 @@ namespace RX_SSDV.CCSDS
 {
     public class FrameSync : DigitalProcessingBlock
     {
-        public const uint syncHead = 0x1ACFFC1D; //0b_0001_1010_1100_1111_1111_1100_0001_1101
+        public const uint CCSDS_ASM = 0x1ACFFC1D; //0b_0001_1010_1100_1111_1111_1100_0001_1101 1ACFFC1D | invert 0b_0001_1010_1100_1111_1111_1100_0001_1101 B83FF358
         public const uint ssdvSyncSymbol = 0x0322; //0b_0011_0010_0010
         public const int syncSymbolSize = 32;
 
@@ -30,14 +30,14 @@ namespace RX_SSDV.CCSDS
                 for (int j = 0; j < syncSymbolSize; j++)
                 {
                     window <<= 1;
-                    window |= (byte)historyBuffer[i + j];
+                    window |= (byte)((int)historyBuffer[i + j] & 0b_01);
                 }
 
                 //Logger.CLogInfo("[FrameSync-Debug]" + Convert.ToString(window, 2));
 
-                if (BinaryUtils.HammingDst(syncHead,window) <= 1 || BinaryUtils.HammingDst(syncHead, ~window) <= 1)
+                if (BinaryUtils.HammingDst(CCSDS_ASM, window) <= 1 || BinaryUtils.HammingDst(CCSDS_ASM, ~window) <= 1)
                 {
-                    Logger.CLogInfo($"[FrameSync-Debug]Synced at {i}");
+                    Logger.CLogInfo($"[FrameSync-Debug]Synced ASM at {i}");
                 }
                 else if (ssdvSyncSymbol == window || ssdvSyncSymbol == ~window)
                 {

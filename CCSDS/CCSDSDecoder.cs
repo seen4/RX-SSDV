@@ -1,12 +1,13 @@
-﻿using RX_SSDV.CCSDS.Viterbi;
+﻿using NWaves.Utils;
+using RX_SSDV.Base;
+using RX_SSDV.CCSDS.Viterbi;
 using RX_SSDV.Utils;
+using System;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
-
-using System;
-using NWaves.Utils;
 
 namespace RX_SSDV.CCSDS
 {
@@ -15,12 +16,17 @@ namespace RX_SSDV.CCSDS
         private Viterbi.Viterbi viterbiDecoder;
         private FrameSync sync;
         private MDecoder mDecoder;
+        private Viterbi.Viterbi viterbiDecoderD;
+        private FrameSync syncD;
+        private MDecoder mDecoderD;
         private BitDelay delay;
 
         private bool useMDecode = false;
 
         private float[] inputBuffer;
         private float[] outputBuffer;
+
+        private float[] hardDecisionBits;
 
         public CCSDSDecoder(bool useMDecode)
         {
@@ -32,8 +38,12 @@ namespace RX_SSDV.CCSDS
         {
             viterbiDecoder = new Viterbi.Viterbi();
             mDecoder = new MDecoder();
-            delay = new BitDelay(1);
+            viterbiDecoderD = new Viterbi.Viterbi();
+            mDecoderD = new MDecoder();
             sync = new FrameSync();
+            syncD = new FrameSync();
+
+            delay = new BitDelay(1);
         }
 
         private void ConfigureOutput()
@@ -67,10 +77,10 @@ namespace RX_SSDV.CCSDS
 
             CheckProcessOutputArr(inputSamplesI.Length);
 
-            HardDecision(inputSamplesI, inputSamplesQ, outputBuffer, inputSize);
-            ConfigureOutput();
+            //Branch Normal
+            HardDecision(inputSamplesI, inputSamplesQ, hardDecisionBits, inputSize);
 
-            int viterbiOutputSize = viterbiDecoder.Process(inputSize, inputBuffer, outputBuffer);
+            int viterbiOutputSize = viterbiDecoder.Process(inputSize, hardDecisionBits, outputBuffer);
             ConfigureOutput();
 
             int mDecodeOutputSize = viterbiOutputSize;
@@ -80,10 +90,26 @@ namespace RX_SSDV.CCSDS
                 ConfigureOutput();
             }
 
-            outputSize = mDecodeOutputSize;
+            sync.Process(mDecodeOutputSize, inputBuffer, outputBuffer);
+            ConfigureOutput();
 
-            sync.Process(outputSize, inputBuffer, outputBuffer);
-            //ConfigureOutput();
+            //Branch Delay
+            delay.Process(inputSize, hardDecisionBits, outputBits);
+            ConfigureOutput();
+
+            int viterbiOutputSizeD = viterbiDecoderD.Process(inputSize, inputBuffer, outputBuffer);
+            ConfigureOutput();
+
+            int mDecodeOutputSizeD = viterbiOutputSizeD;
+            if (useMDecode)
+            {
+                mDecodeOutputSizeD = mDecoderD.Process(viterbiOutputSizeD, inputBuffer, outputBuffer);
+                ConfigureOutput();
+            }
+
+            syncD.Process(mDecodeOutputSizeD, inputBuffer, outputBuffer);
+
+            outputSize = mDecodeOutputSize;
 
             outputBuffer.FastCopyTo(outputBits, outputSize, 0, 0);
         }
@@ -102,6 +128,11 @@ namespace RX_SSDV.CCSDS
             if (ArrayUtil.CheckNeedUpdate(inputBuffer, arrSize))
             {
                 inputBuffer = new float[arrSize];
+            }
+
+            if (ArrayUtil.CheckNeedUpdate(hardDecisionBits, arrSize))
+            {
+                hardDecisionBits = new float[arrSize];
             }
         }
     }

@@ -52,8 +52,9 @@ namespace RX_SSDV.CCSDS
             base.Process(inputArr, outputArr, inputSize);
 
             int outputIndex = 0;
-            for(int i = 0; i + 7 < historyBuffer.Length; i+=8)
+            for(int i = 0; i + 8 <= historyBuffer.Length; i+=8)
             {
+                //Pack input bits
                 byte input = 0;
                 for(int j = 0; j < 8; j++)
                 {
@@ -61,6 +62,8 @@ namespace RX_SSDV.CCSDS
                     input <<= 1;
                     input |= (byte)(inputBit & 1);
                 }
+
+                //Unpack output bits
                 byte output = DecodeSingle(input);
                 for(int j = 0; j < 8; j++)
                 {
