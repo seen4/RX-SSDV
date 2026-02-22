@@ -146,23 +146,21 @@ namespace RX_SSDV.DSP
             freqShift.Process(realSignal.Length, realSignal, imagSignal, outputBufferI, outputBufferQ);
             ConfigureOutput();
 
+            //int agcOutputSize = agc.Process(realSignal.Length, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
+            //ConfigureOutput();
+
             int costasOutputSize = costasLoop.Process(realSignal.Length, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
             ConfigureOutput();
 
             int clockOutputSize = clockRecovery.Process(costasOutputSize, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
             //ConfigureOutput();
 
-            //int agcOutputSize = agc.Process(clockOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
-
-            //int equalizerOutputSize = equalizer.Process(clockOutputSize, outBufferI_2, outBufferQ_2, outBufferI_1, outBufferQ_1);
+            //int equalizerOutputSize = equalizer.Process(clockOutputSize, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
 
             outputCount = clockOutputSize;
-            //outputCount = realSignal.Length;
 
             outputBufferI.FastCopyTo(outReal, outputCount);
             outputBufferQ.FastCopyTo(outImag, outputCount);
-            //outBufferI_2.FastCopyTo(outReal, clockOutputSize);
-            //outBufferQ_2.FastCopyTo(outImag, clockOutputSize);
         }
 
         public void CheckBlocks()
