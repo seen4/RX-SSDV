@@ -95,7 +95,7 @@ namespace RX_SSDV.DSP
             {
                 availableDataCount = inputIndex - outputIndex;
             }
-            else if (availableDataCount < outputIndex)
+            else if (inputIndex < outputIndex)
             {
                 availableDataCount = bufferSize - (outputIndex - inputIndex);
             }
@@ -137,7 +137,7 @@ namespace RX_SSDV.DSP
             }
 
             //UpdateDataCount();
-            if(availableDataCount < bufferSize)
+            if (availableDataCount < bufferSize)
             {
                 availableDataCount += inputLength;
             }

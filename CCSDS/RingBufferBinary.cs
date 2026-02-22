@@ -93,7 +93,7 @@ namespace RX_SSDV.CCSDS
             {
                 availableDataCount = inputIndex - outputIndex;
             }
-            else if (availableDataCount < outputIndex)
+            else if (inputIndex < outputIndex)
             {
                 availableDataCount = bufferSize - (outputIndex - inputIndex);
             }
@@ -130,7 +130,8 @@ namespace RX_SSDV.CCSDS
             }
 
             //UpdateDataCount();
-            if(availableDataCount < bufferSize)
+
+            if (availableDataCount < bufferSize)
             {
                 availableDataCount += inputLength;
             }
