@@ -78,7 +78,7 @@ namespace RX_SSDV.CCSDS.Viterbi
                 //Get input
                 byte input1 = (byte)historyBuffer[i];
                 byte input2 = (byte)historyBuffer[i + 1];
-                byte bits = (byte)((input2 << 1) + input1); //低旧高新
+                byte bits = (byte)((input1 << 1) + input2);
 
                 //Update surviving path
                 trellis.UpdateSurvivingPath(bits);
@@ -121,7 +121,7 @@ namespace RX_SSDV.CCSDS.Viterbi
                     int output1 = Parity(s & poly1);
                     int output2 = Parity(s & poly2);
 
-                    branchOutputs[state, input] = (output2 << 1) | output1;
+                    branchOutputs[state, input] = (output1 << 1) | output2;
                 }
             }
         }
