@@ -141,8 +141,8 @@ namespace RX_SSDV.Test
                 }
 
                 //Write
-                inputArray[i] = BinaryUtils.ReadInt(input, 1);
-                inputArray[i + 1] = BinaryUtils.ReadInt(input, 2);
+                inputArray[i] = BinaryUtils.ReadInt(input, 2);
+                inputArray[i + 1] = BinaryUtils.ReadInt(input, 1);
             }
         }
 
@@ -177,8 +177,8 @@ namespace RX_SSDV.Test
                 }
 
                 //Write
-                inputArray[i] = BinaryUtils.ReadInt(input, 1);
-                inputArray[i + 1] = BinaryUtils.ReadInt(input, 2);
+                inputArray[i] = BinaryUtils.ReadInt(input, 2);
+                inputArray[i + 1] = BinaryUtils.ReadInt(input, 1);
             }
         }
 
