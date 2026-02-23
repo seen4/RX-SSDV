@@ -13,12 +13,12 @@ namespace RX_SSDV.CCSDS
 {
     public class CCSDSDecoder
     {
-        private Viterbi.Viterbi viterbiDecoder;
-        private FrameSync sync;
-        private MDecoder mDecoder;
-        private Viterbi.Viterbi viterbiDecoderD;
-        private FrameSync syncD;
-        private MDecoder mDecoderD;
+        private Viterbi.Viterbi viterbiDecoder0;
+        private Viterbi.Viterbi viterbiDecoder1;
+        private MDecoder mDecoder0;
+        private MDecoder mDecoder1;
+        private Deframer deframer0;
+        private Deframer deframer1;
         private BitDelay delay;
 
         private bool useMDecode = false;
@@ -28,22 +28,23 @@ namespace RX_SSDV.CCSDS
 
         private float[] hardDecisionBits;
 
-        bool dbg = true;
+        public const int DIGITAL_BUFFER_SIZE = 1024;
 
         public CCSDSDecoder(bool useMDecode)
         {
-            InitProcessingFlow();
             this.useMDecode = useMDecode;
+            InitProcessingFlow();
+            CheckProcessOutputArr(DIGITAL_BUFFER_SIZE);
         }
 
         public void InitProcessingFlow()
         {
-            viterbiDecoder = new Viterbi.Viterbi();
-            mDecoder = new MDecoder();
-            viterbiDecoderD = new Viterbi.Viterbi();
-            mDecoderD = new MDecoder();
-            sync = new FrameSync();
-            syncD = new FrameSync();
+            viterbiDecoder0 = new Viterbi.Viterbi();
+            viterbiDecoder1 = new Viterbi.Viterbi();
+            mDecoder0 = new MDecoder();
+            mDecoder1 = new MDecoder();
+            deframer0 = new Deframer();
+            deframer1 = new Deframer();
 
             delay = new BitDelay(1);
         }
@@ -55,7 +56,7 @@ namespace RX_SSDV.CCSDS
             inputBuffer = temp;
         }
 
-        public void HardDecision(float[] inputSamplesI, float[] inputSamplesQ, float[] outputBits, int inputSize = -1)
+        public static void HardDecision(float[] inputSamplesI, float[] inputSamplesQ, float[] outputBits, int inputSize = -1)
         {
             inputSize = inputSize == -1 ? inputSamplesI.Length : inputSize;
             if (inputSize <= 0)
@@ -76,52 +77,22 @@ namespace RX_SSDV.CCSDS
             {
                 throw new ArgumentException("'inputSize' must bigger than zero");
             }
-
-            CheckProcessOutputArr(inputSamplesI.Length);
-
-            //Branch Normal
+            
             HardDecision(inputSamplesI, inputSamplesQ, hardDecisionBits, inputSize);
 
-            int viterbiOutputSize = viterbiDecoder.Process(inputSize, hardDecisionBits, outputBuffer);
-            if (dbg)
-            {
-                Logger.CPrintArr(outputBuffer, viterbiOutputSize, "Viterbi Delay 0");
-            }
-            ConfigureOutput();
-
-            int mDecodeOutputSize = viterbiOutputSize;
-            if(useMDecode)
-            {
-                mDecodeOutputSize = mDecoder.Process(viterbiOutputSize, inputBuffer, outputBuffer);
-                ConfigureOutput();
-            }
-
-            sync.Process(mDecodeOutputSize, inputBuffer, outputBuffer);
-            ConfigureOutput();
+            //Branch Normal
+            int viterbiOutputSize0 = viterbiDecoder0.Process(inputSize, hardDecisionBits, outputBuffer); ConfigureOutput();
+            if(useMDecode) { mDecoder0.Process(viterbiOutputSize0, inputBuffer, outputBuffer); ConfigureOutput(); }
+            deframer0.Process(viterbiOutputSize0, inputBuffer, outputBuffer); ConfigureOutput();
 
             //Branch Delay
-            delay.Process(inputSize, hardDecisionBits, outputBuffer);
-            ConfigureOutput();
+            delay.Process(inputSize, hardDecisionBits, outputBuffer); ConfigureOutput();
+            int viterbiOutputSize1 = viterbiDecoder1.Process(inputSize, inputBuffer, outputBuffer); ConfigureOutput();
+            if (useMDecode) { mDecoder1.Process(viterbiOutputSize1, inputBuffer, outputBuffer); ConfigureOutput(); }
+            deframer1.Process(viterbiOutputSize1, inputBuffer, outputBuffer);
 
-            int viterbiOutputSizeD = viterbiDecoderD.Process(inputSize, inputBuffer, outputBuffer);
-            if (dbg)
-            {
-                Logger.CPrintArr(outputBuffer, viterbiOutputSizeD, "Viterbi Delay 1");
-                dbg = false;
-            }
-            ConfigureOutput();
-
-            int mDecodeOutputSizeD = viterbiOutputSizeD;
-            if (useMDecode)
-            {
-                mDecodeOutputSizeD = mDecoderD.Process(viterbiOutputSizeD, inputBuffer, outputBuffer);
-                ConfigureOutput();
-            }
-
-            syncD.Process(mDecodeOutputSizeD, inputBuffer, outputBuffer);
-
-            outputSize = mDecodeOutputSize;
-
+            //Output
+            outputSize = viterbiOutputSize0;
             outputBuffer.FastCopyTo(outputBits, outputSize, 0, 0);
         }
 
