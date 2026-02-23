@@ -110,7 +110,7 @@ namespace RX_SSDV.Base
             StringBuilder sb = new StringBuilder();
             int count = 0;
 
-            LogInfo("arr " + msg);
+            LogInfo(msg);
             for (int i = 0; i < arrSize; i++)
             {
                 sb.Append(arrInput[i]);
@@ -123,8 +123,11 @@ namespace RX_SSDV.Base
                     sb.Clear();
                 }
             }
-            count = 0;
-            LogInfo(sb.ToString());
+            if (count != 0)
+            {
+                LogInfo(sb.ToString());
+                count = 0;
+            }
             sb.Clear();
         }
 
@@ -133,7 +136,7 @@ namespace RX_SSDV.Base
             StringBuilder sb = new StringBuilder();
             int count = 0;
 
-            CLogInfo("arr " + msg);
+            CLogInfo(msg);
             for (int i = 0; i < arrSize; i++)
             {
                 sb.Append(arrInput[i]);
@@ -146,8 +149,11 @@ namespace RX_SSDV.Base
                     sb.Clear();
                 }
             }
-            count = 0;
-            CLogInfo(sb.ToString());
+            if(count != 0)
+            {
+                CLogInfo(sb.ToString());
+                count = 0;
+            }
             sb.Clear();
         }
     }
