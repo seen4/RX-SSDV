@@ -3,10 +3,12 @@ using RX_SSDV.CCSDS.Viterbi;
 using RX_SSDV.Utils;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Input;
 
 namespace RX_SSDV.Test
 {
@@ -17,7 +19,10 @@ namespace RX_SSDV.Test
         public float[] inputArray;
         public float[] outputArray;
         public int outputSize;
-        public int sampleCount = 320;
+        public int sampleCount = 128;
+
+        public byte[] inputBytes;
+        public int inputBytesLen = 0;
 
         private int generatorState = 0;
 
@@ -25,79 +30,92 @@ namespace RX_SSDV.Test
         {
             Logger.LogInfo("Running Viterbi Test...");
 
-            Logger.LogInfo("GROUP 1");
-            GenerateInput(10);
-            Decode();
-            PrintResult();
+            DecodeFixed();
 
-            Logger.LogInfo("GROUP 2");
-            GenerateInput(1);
-            Decode();
-            PrintResult();
+            //Logger.LogInfo("GROUP 1");
+            //GenerateInput(10);
+            //Decode();
+            //PrintResult();
 
-            Logger.LogInfo("GROUP RAND 1");
-            GenerateInputRand();
-            Decode();
-            PrintResult();
+            //Logger.LogInfo("GROUP 2");
+            //GenerateInput(1);
+            //Decode();
+            //PrintResult();
 
-            Logger.LogInfo("GROUP RAND 2");
-            GenerateInputRand();
-            Decode();
-            PrintResult();
+            //Logger.LogInfo("GROUP RAND 1");
+            //GenerateInputRand();
+            //Decode();
+            //PrintResult();
+
+            //using(FileStream fs = new FileStream("C:\\Users\\AstarLC\\Desktop\\Documents\\misc\\test_out_viterbi.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            //{
+            //    fs.Write(inputBytes, 0, inputBytesLen);
+            //    fs.Flush();
+            //    fs.Close();
+            //}
+
+            //Logger.LogInfo("GROUP RAND 2");
+            //GenerateInputRand();
+            //Decode();
+            //PrintResult();
         }
 
         public void PrintResult()
         {
-            StringBuilder sb = new StringBuilder();
-            int count = 0;
+            //StringBuilder sb = new StringBuilder();
+            //int count = 0;
 
-            Logger.LogInfo("Input array");
-            for (int i = 0; i < inputArray.Length; i++)
-            {
-                sb.Append(inputArray[i]);
-                count++;
+            //Logger.LogInfo("Input array");
+            //for (int i = 0; i < inputArray.Length; i++)
+            //{
+            //    sb.Append(inputArray[i]);
+            //    count++;
 
-                if (count > 32)
-                {
-                    count = 0;
-                    Logger.LogInfo(sb.ToString());
-                    sb.Clear();
-                }
-            }
-            count = 0;
-            sb.Clear();
-            Logger.LogInfo($"Input data array");
-            for (int i = 0; i < sampleCount; i++)
-            {
-                sb.Append(inputDataArray[i]);
-                count++;
+            //    if (count > 32)
+            //    {
+            //        count = 0;
+            //        Logger.LogInfo(sb.ToString());
+            //        sb.Clear();
+            //    }
+            //}
+            //count = 0;
+            //sb.Clear();
+            //Logger.LogInfo($"Input data array");
+            //for (int i = 0; i < sampleCount; i++)
+            //{
+            //    sb.Append(inputDataArray[i]);
+            //    count++;
 
-                if (count > 32)
-                {
-                    count = 0;
-                    Logger.LogInfo(sb.ToString());
-                    sb.Clear();
-                }
-            }
-            count = 0;
-            sb.Clear();
+            //    if (count > 32)
+            //    {
+            //        count = 0;
+            //        Logger.LogInfo(sb.ToString());
+            //        sb.Clear();
+            //    }
+            //}
+            //count = 0;
+            //sb.Clear();
+
+            Logger.PrintArr(inputArray, inputArray.Length, "Input array");
+            Logger.PrintArr(inputDataArray, sampleCount, "Input data array");
+            Logger.PrintArr(outputArray, outputSize, "Output array");
 
             int err = 0;
-            Logger.LogInfo($"Output array");
+            //Logger.LogInfo($"Output array");
             for (int i = 0; i < outputSize; i++)
             {
                 if (inputDataArray[i] != outputArray[i])
                     err++;
 
-                sb.Append(outputArray[i]);
-                count++;
+                //sb.Append(outputArray[i]);
+                //count++;
 
-                if (count > 32)
-                {
-                    count = 0;
-                    Logger.LogInfo(sb.ToString());
-                    sb.Clear();
-                }
+                //if (count > 32)
+                //{
+                //    count = 0;
+                //    Logger.LogInfo(sb.ToString());
+                //    sb.Clear();
+                //}
             }
 
             Logger.LogInfo($"Errors: {err}/{inputDataArray.Length}, Error rate: { ((float)err / inputDataArray.Length) * 100}%");
@@ -107,7 +125,12 @@ namespace RX_SSDV.Test
         {
             inputArray = new float[sampleCount * 2];
             inputDataArray = new float[sampleCount];
+            inputBytes = new byte[sampleCount];
             //generatorState = 0;
+
+            byte inputByte = 0;
+            int byteInputIndex = 0;
+            int inputTimes = 0;
 
             int decisionPtr = 0;
             for (int i = 0; i < sampleCount * 2; i+=2)
@@ -141,19 +164,47 @@ namespace RX_SSDV.Test
                 }
 
                 //Write
-                inputArray[i] = BinaryUtils.ReadInt(input, 2);
-                inputArray[i + 1] = BinaryUtils.ReadInt(input, 1);
+                int input1 = BinaryUtils.ReadInt(input, 2);
+                int input2 = BinaryUtils.ReadInt(input, 1);
+
+                inputArray[i] = input1;
+                inputArray[i + 1] = input2;
+
+                inputByte <<= 2;
+                inputByte |= (byte)((input1 << 1) | input2);
+                inputTimes += 1;
+                if (inputTimes == 4)
+                {
+                    inputBytes[byteInputIndex++] = inputByte;
+                    inputByte = 0;
+                    inputTimes = 0;
+                }
             }
+
+            if (inputTimes < 3)
+            {
+                for (int i = inputTimes; i < 3; i++)
+                {
+                    inputByte <<= 2;
+                    inputBytes[byteInputIndex++] = inputByte;
+                }
+            }
+
+            inputBytesLen = byteInputIndex;
         }
 
         public void GenerateInputRand()
         {
             inputArray = new float[sampleCount * 2];
             inputDataArray = new float[sampleCount];
+            inputBytes = new byte[sampleCount];
             //generatorState = 0;
 
             Random random = new Random();
 
+            byte inputByte = 0;
+            int byteInputIndex = 0;
+            int inputTimes = 0;
             for (int i = 0, j = 0; i < sampleCount * 2; i += 2, j++)
             {
                 int rand = random.Next(2);
@@ -177,9 +228,33 @@ namespace RX_SSDV.Test
                 }
 
                 //Write
-                inputArray[i] = BinaryUtils.ReadInt(input, 2);
-                inputArray[i + 1] = BinaryUtils.ReadInt(input, 1);
+                int input1 = BinaryUtils.ReadInt(input, 2);
+                int input2 = BinaryUtils.ReadInt(input, 1);
+
+                inputArray[i] = input1;
+                inputArray[i + 1] = input2;
+
+                inputByte <<= 2;
+                inputByte |= (byte)((input1 << 1) | input2);
+                inputTimes += 1;
+                if(inputTimes == 4)
+                {
+                    inputBytes[byteInputIndex++] = inputByte;
+                    inputByte = 0;
+                    inputTimes = 0;
+                }
             }
+
+            if(inputTimes < 3)
+            {
+                for(int i = inputTimes; i < 3; i++)
+                {
+                    inputByte <<= 2;
+                    inputBytes[byteInputIndex++] = inputByte;
+                }
+            }
+
+            inputBytesLen = byteInputIndex;
         }
 
         public void Decode()
@@ -187,6 +262,35 @@ namespace RX_SSDV.Test
             outputArray = new float[sampleCount * 2];
 
             outputSize = viterbi.Process(inputArray.Length, inputArray, outputArray);
+        }
+
+        public void DecodeFixed()
+        {
+            outputArray = new float[sampleCount * 2];
+            float[] inputArr = 
+                {1,1,1,0,1,0,0,0,0,
+                 0,0,0,1,1,1,1,1,1,
+                 1,0,1,0,0,1,1,0,0,
+                 0,0,0,0,0,0,0,0,1,
+                 0,1,1,0,0,1,1,1,1,
+                 1,1,1,1,1,1,0,0,1,
+                 0,0,1,0,1,0,0,0,0,
+                 0,0,0,1,1,1,1,1,1,
+                 0,1,0,0,1,1,1,0,1,
+                 1,0,1,0,0,1,1,0,0,
+                 0,0,0,1,1,0,0,1,1,
+                 1,0,1,0,0,1,1,1,1,
+                 1,0,1,1,1,0,1,0,0,
+                 1,0,0,0,0,0,1,1,0,
+                 0,0,1,0,1,1,1,0,1,
+                 0,0,1,0,0,0,0,1,0,
+                 1,1,0,0 };
+
+            float[] outputArr = new float[inputArr.Length];
+
+            int outSize = viterbi.Process(inputArr.Length, inputArr, outputArr);
+
+            Logger.PrintArr(outputArr, outSize, "Test out");
         }
     }
 }
