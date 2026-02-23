@@ -15,8 +15,8 @@ namespace RX_SSDV.CCSDS.Viterbi
     public class Viterbi : DigitalProcessingBlock
     {
         //Polynomials of (2,1,7) convolutional code, IEEE 802.11 standard
-        public const int poly1 = 0b_101_1011; //1101101
-        public const int poly2 = 0b_111_1001; //1001111
+        public const int poly1 = 0b_1011011; //origin 1101101 | reversed 1011011
+        public const int poly2 = 0b_1111001; //origin 1001111 | reversed 1111001
 
         private int n = 1;
         public int AdderCount => n;
