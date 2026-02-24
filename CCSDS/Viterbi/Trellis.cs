@@ -54,7 +54,7 @@ namespace RX_SSDV.CCSDS.Viterbi
             newPathDst = new int[stateCount];
 
             for (int i = 1; i < pathDst.Length; i++)
-                pathDst[i] = int.MinValue / 2;
+                pathDst[i] = 0;
         }
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace RX_SSDV.CCSDS.Viterbi
             (int, int) sourceStates = CalcSourceStates(state, viterbi.Constraint);
             int sourceState1 = sourceStates.Item1;
             int sourceState2 = sourceStates.Item2;
-
+            
             int recoverInput = ReadInt(state, 6);
 
             int pd1 = pathDst[sourceState1] + HammingDst(bits, sourceState1, recoverInput);

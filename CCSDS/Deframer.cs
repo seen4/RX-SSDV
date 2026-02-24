@@ -13,12 +13,12 @@ namespace RX_SSDV.CCSDS
     public class Deframer : DigitalProcessingBlock
     {
         //Symbol sync
-        public const uint CCSDS_ASM = 0x1ACFFC1D; //0b_0001_1010_1100_1111_1111_1100_0001_1101 1ACFFC1D | inverse 0b_0001_1010_1100_1111_1111_1100_0001_1101 B83FF358
+        public const uint CCSDS_ASM = 0x1ACFFC1D; //0b_0001_1010_1100_1111_1111_1100_0001_1101 1ACFFC1D | inverse 0b_1011_1000_0011_1111_1111_0011_0101_1000 B83FF358
         public const uint ssdvSyncSymbol = 0x0322; //0b_0011_0010_0010
         public const int syncSymbolSize = 32;
 
         //Sync
-        private float[] inputBuffer = new float[CCSDSDecoder.DIGITAL_BUFFER_SIZE];
+        //private float[] inputBuffer = new float[CCSDSDecoder.DIGITAL_BUFFER_SIZE];
 
         public static readonly byte[] mDecodeTab =
         {
@@ -74,9 +74,9 @@ namespace RX_SSDV.CCSDS
                     window |= (byte)((int)historyBuffer[i + j] & 0b_01);
                 }
 
-                //Logger.CLogInfo("[FrameSync-Debug]" + Convert.ToString(window, 2));
+                //Logger.CLogInfo($"[FrameSync-Debug] {window.ToString("B32")}");
 
-                if ((BinaryUtils.HammingDst(CCSDS_ASM, window) <= 1 || BinaryUtils.HammingDst(CCSDS_ASM, ~window) <= 1) && syncSymbolSize == 32)
+                if ((BinaryUtils.HammingDst(CCSDS_ASM, window) <= 2 || BinaryUtils.HammingDst(CCSDS_ASM, ~window) <= 2) && syncSymbolSize == 32)
                 {
                     Logger.CLogInfo($"[FrameSync-Debug]Synced ASM at {i}");
                 }

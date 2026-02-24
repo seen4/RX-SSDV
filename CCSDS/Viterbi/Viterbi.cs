@@ -1,4 +1,5 @@
-﻿using RX_SSDV.DSP;
+﻿using RX_SSDV.Base;
+using RX_SSDV.DSP;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +16,8 @@ namespace RX_SSDV.CCSDS.Viterbi
     public class Viterbi : DigitalProcessingBlock
     {
         //Polynomials of (2,1,7) convolutional code, IEEE 802.11 standard
+
+        //For KA9Q's viterbi, don't reverse poly; For GNURadio viterbi, reverse it.
         public const int poly1 = 0b_1011011; //origin 1101101 | reversed 1011011
         public const int poly2 = 0b_1111001; //origin 1001111 | reversed 1111001
 

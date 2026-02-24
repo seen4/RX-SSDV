@@ -42,10 +42,10 @@ namespace RX_SSDV.Test
             //Decode();
             //PrintResult();
 
-            //Logger.LogInfo("GROUP RAND 1");
-            //GenerateInputRand();
-            //Decode();
-            //PrintResult();
+            Logger.LogInfo("GROUP RAND 1");
+            GenerateInputRand();
+            Decode();
+            PrintResult();
 
             //using(FileStream fs = new FileStream("C:\\Users\\AstarLC\\Desktop\\Documents\\misc\\test_out_viterbi.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite))
             //{

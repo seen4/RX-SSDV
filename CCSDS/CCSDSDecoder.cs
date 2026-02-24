@@ -81,18 +81,18 @@ namespace RX_SSDV.CCSDS
             HardDecision(inputSamplesI, inputSamplesQ, hardDecisionBits, inputSize);
 
             //Branch Normal
-            int viterbiOutputSize0 = viterbiDecoder0.Process(inputSize, hardDecisionBits, outputBuffer); ConfigureOutput();
-            if(useMDecode) { mDecoder0.Process(viterbiOutputSize0, inputBuffer, outputBuffer); ConfigureOutput(); }
-            deframer0.Process(viterbiOutputSize0, inputBuffer, outputBuffer); ConfigureOutput();
+            int outputSize0 = viterbiDecoder0.Process(inputSize, hardDecisionBits, outputBuffer); ConfigureOutput();
+            if(useMDecode) { outputSize0 = mDecoder0.Process(outputSize0, inputBuffer, outputBuffer); ConfigureOutput(); }
+            deframer0.Process(outputSize0, inputBuffer, outputBuffer); ConfigureOutput();
 
             //Branch Delay
             delay.Process(inputSize, hardDecisionBits, outputBuffer); ConfigureOutput();
-            int viterbiOutputSize1 = viterbiDecoder1.Process(inputSize, inputBuffer, outputBuffer); ConfigureOutput();
-            if (useMDecode) { mDecoder1.Process(viterbiOutputSize1, inputBuffer, outputBuffer); ConfigureOutput(); }
-            deframer1.Process(viterbiOutputSize1, inputBuffer, outputBuffer);
+            int outputSize1 = viterbiDecoder1.Process(inputSize, inputBuffer, outputBuffer); ConfigureOutput();
+            if (useMDecode) { outputSize1 = mDecoder1.Process(outputSize1, inputBuffer, outputBuffer); ConfigureOutput(); }
+            deframer1.Process(outputSize1, inputBuffer, outputBuffer);
 
             //Output
-            outputSize = viterbiOutputSize0;
+            outputSize = outputSize1;
             outputBuffer.FastCopyTo(outputBits, outputSize, 0, 0);
         }
 

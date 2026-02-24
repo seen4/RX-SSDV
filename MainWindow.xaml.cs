@@ -57,11 +57,12 @@ namespace RX_SSDV
 
             Init();
 
-            //ViterbiTest test = new ViterbiTest();
-            //test.Test();
+            ViterbiTest test = new ViterbiTest();
+            test.Test();
             //DelayTest.Test();
             //MDecoderTest.Test();
             //DeframerTest.Test();
+            //CCSDS_Test.Test();
         }
 
         private void Init()
