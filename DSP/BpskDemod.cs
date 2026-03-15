@@ -104,11 +104,11 @@ namespace RX_SSDV.DSP
         {
             freqShift = new FreqShift(48000, 0);
             costasLoop = new CostasLoop(0.05f, 10);
-            equalizer = LMS_DD_Equalizer.BuildEqualizer(0.05f, 2, 2);
+            equalizer = LMS_DD_Equalizer.BuildEqualizer(0.05f, 1, 1);
             clockRecovery = new ClockRecoveryBlock_MM(0.5f, 0.175f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f);
             agc = new FeedforwardAGC(1, 1);
-            //float[] rrcTaps = FilterUtils.RootRaisedCosine(16, 1, 1 / MainDSP.GetSPS(), 0.35f, 11 * MainDSP.SamplePerSymbol);
-            //rrcFilter = new ComplexFirFilter(rrcTaps, new float[rrcTaps.Length]);
+            float[] rrcTaps = FilterUtils.RootRaisedCosine(16, MainDSP.GetSPS(), 1 , 0.35f, 11 * MainDSP.SamplePerSymbol);
+            rrcFilter = new ComplexFirFilter(rrcTaps, new float[rrcTaps.Length]);
         }
         #endregion
         
@@ -142,7 +142,7 @@ namespace RX_SSDV.DSP
             CheckProcessOutputArr(realSignal.Length);
             CheckBlocks();
 
-            //rrcFilter.ProcessOnline(realSignal, imagSignal, outBufferI_1, outBufferQ_1);
+            
             freqShift.Process(realSignal.Length, realSignal, imagSignal, outputBufferI, outputBufferQ);
             ConfigureOutput();
 
@@ -152,12 +152,15 @@ namespace RX_SSDV.DSP
             int costasOutputSize = costasLoop.Process(realSignal.Length, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
             ConfigureOutput();
 
+            rrcFilter.ProcessOnline(inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
+            ConfigureOutput();
+
             int clockOutputSize = clockRecovery.Process(costasOutputSize, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
-            //ConfigureOutput();
+            ConfigureOutput();
 
-            //int equalizerOutputSize = equalizer.Process(clockOutputSize, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
+            int equalizerOutputSize = equalizer.Process(clockOutputSize, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
 
-            outputCount = clockOutputSize;
+            outputCount = equalizerOutputSize;
 
             outputBufferI.FastCopyTo(outReal, outputCount);
             outputBufferQ.FastCopyTo(outImag, outputCount);

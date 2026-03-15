@@ -109,16 +109,16 @@ namespace RX_SSDV.DSP
                 Complex error = CalcError(sample);
                 for (int k = 0; k < _kernelSize; k++)
                 {
-                    float inI = _delayLineI[k];
-                    float inQ = _delayLineQ[k];
+                    float inI = (float)historyBuffer[j + k].Real;
+                    float inQ = (float)historyBuffer[j + k].Imaginary;
                     Complex input = new Complex(inI, inQ);
                     Complex deltaTap = CalcTap(input, error);
                     float deltaI = (float)deltaTap.Real;
                     float deltaQ = (float)deltaTap.Imaginary;
-                    _bI[k] += deltaI;
-                    _bI[_kernelSize + k] += deltaI;
-                    _bQ[k] += deltaQ;
-                    _bQ[_kernelSize + k] += deltaQ;
+                    _bI[_kernelSize - 1 - k] += deltaI;
+                    _bI[2 * _kernelSize - 1 - k] += deltaI;
+                    _bQ[_kernelSize - 1 - k] += deltaQ;
+                    _bQ[2 * _kernelSize - 1 - k] += deltaQ;
 
                     //if (i > 189)
                     //{

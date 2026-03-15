@@ -1077,6 +1077,7 @@ namespace RX_SSDV.Utils
                     if (alpha == 1)
                     {
                         taps[i] = -1;
+                        scale += taps[i];
                         continue;
                     }
                     x3 = (1 - alpha) * x1;
