@@ -37,7 +37,7 @@ namespace RX_SSDV.CCSDS.Viterbi
          */
 
         public const int poly1 = 0b_0101_1011; //0b_0101_1011
-        public const int poly2 = 0b_0111_1001; //0b_0111_1001
+        public const int poly2 = 0b_0111_1001;
 
         private int n = 1;
         public int AdderCount => n;

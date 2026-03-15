@@ -22,8 +22,8 @@ namespace RX_SSDV.CCSDS
         private Deframer deframer1;
         private BitDelay delay;
 
-        private PackAndOutputBits output1;
-        private PackAndOutputBits output2;
+        //private PackAndOutputBits output1;
+        //private PackAndOutputBits output2;
 
         private bool useMDecode = false;
 
@@ -40,8 +40,8 @@ namespace RX_SSDV.CCSDS
             InitProcessingFlow();
             CheckProcessOutputArr(DIGITAL_BUFFER_SIZE);
 
-            SampleSource.onStart += OpenOutputStream;
-            SampleSource.onStop += CloseOutputStream;
+            //SampleSource.onStart += OpenOutputStream;
+            //SampleSource.onStop += CloseOutputStream;
         }
 
         public void InitProcessingFlow()
@@ -53,8 +53,8 @@ namespace RX_SSDV.CCSDS
             deframer0 = new Deframer();
             deframer1 = new Deframer();
 
-            output1 = new PackAndOutputBits("C:\\Users\\AstarLC\\Desktop\\Documents\\misc\\test_out_viterbi_1.bin");
-            output2 = new PackAndOutputBits("C:\\Users\\AstarLC\\Desktop\\Documents\\misc\\test_out_viterbi_2.bin");
+            //output1 = new PackAndOutputBits("C:\\Users\\AstarLC\\Desktop\\Documents\\misc\\test_out_viterbi_1.bin");
+            //output2 = new PackAndOutputBits("C:\\Users\\AstarLC\\Desktop\\Documents\\misc\\test_out_viterbi_2.bin");
 
             delay = new BitDelay(1);
         }
@@ -131,16 +131,16 @@ namespace RX_SSDV.CCSDS
             }
         }
 
-        public void OpenOutputStream()
-        {
-            output1.OpenStream();
-            output2.OpenStream();
-        }
+        //public void OpenOutputStream()
+        //{
+        //    output1.OpenStream();
+        //    output2.OpenStream();
+        //}
 
-        public void CloseOutputStream()
-        {
-            output1.CloseStream();
-            output2.CloseStream();
-        }
+        //public void CloseOutputStream()
+        //{
+        //    output1.CloseStream();
+        //    output2.CloseStream();
+        //}
     }
 }
