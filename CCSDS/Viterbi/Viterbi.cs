@@ -25,7 +25,6 @@ namespace RX_SSDV.CCSDS.Viterbi
          * 109      79       NASA-DSN uninverted
          */
 
-        //Use reversed 'NASA-DSN uninverted' to adapt the 'Encode CCSDS 27' block of GNU Radio. (idk why)
 
         /* For origin 'cc_decode'
          * poly1 = 0b_0111_1001;
@@ -36,8 +35,9 @@ namespace RX_SSDV.CCSDS.Viterbi
          * poly2 = 0b_0111_1001;
          */
 
-        public const int poly1 = 0b_0101_1011; //0b_0101_1011
-        public const int poly2 = 0b_0111_1001;
+        public const int poly1 = 0b_0111_1001;//79
+        public const int poly2 = 0b_0110_1101; //109(Reversed)
+        
 
         private int n = 1;
         public int AdderCount => n;
