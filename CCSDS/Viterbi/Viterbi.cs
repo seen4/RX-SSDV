@@ -17,9 +17,27 @@ namespace RX_SSDV.CCSDS.Viterbi
     {
         //Polynomials of (2,1,7) convolutional code, IEEE 802.11 standard
 
-        //For KA9Q's viterbi, don't reverse poly; For GNURadio viterbi, reverse it.
-        public const int poly1 = 0b_1011011; //origin 1101101 | reversed 1011011
-        public const int poly2 = 0b_1111001; //origin 1001111 | reversed 1111001
+        /* POLY1    POLY2    NAME
+         * 
+         * 79       -109     CCSDS
+         * -109     79       NASA-DSN
+         * 79       109      CCSDS uninverted
+         * 109      79       NASA-DSN uninverted
+         */
+
+        //Use reversed 'NASA-DSN uninverted' to adapt the 'Encode CCSDS 27' block of GNU Radio. (idk why)
+
+        /* For origin 'cc_decode'
+         * poly1 = 0b_0111_1001;
+         * poly2 = 0b_0101_1011;
+         * 
+         * For origin 'Encode CCSDS 27'
+         * poly1 = 0b_0101_1011;
+         * poly2 = 0b_0111_1001;
+         */
+
+        public const int poly1 = 0b_0101_1011; //0b_0101_1011
+        public const int poly2 = 0b_0111_1001; //0b_0111_1001
 
         private int n = 1;
         public int AdderCount => n;
@@ -121,8 +139,12 @@ namespace RX_SSDV.CCSDS.Viterbi
                 {
                     int s = state | (input << (constraint - 1));
 
-                    int output1 = Parity(s & poly1);
-                    int output2 = Parity(s & poly2);
+                    int absPoly1 = Math.Abs(poly1);
+                    int absPoly2 = Math.Abs(poly2);
+                    int raw1 = Parity(s & absPoly1);
+                    int raw2 = Parity(s & absPoly2);
+                    int output1 = poly1 < 0 ? raw1 ^ 1 : raw1;
+                    int output2 = poly2 < 0 ? raw2 ^ 1 : raw2;
 
                     branchOutputs[state, input] = (output1 << 1) | output2;
                 }

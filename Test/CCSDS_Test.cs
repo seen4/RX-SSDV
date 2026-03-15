@@ -13,13 +13,40 @@ namespace RX_SSDV.Test
     {
         public static void Test()
         {
-            float[] input = { 
-                0,0,0,0,0,0,1,1,0,1,0,1,0,0,1,1,
-                0,1,0,0,1,0,0,1,1,1,0,0,0,0,1,0,
-                1,0,0,1,0,1,1,0,1,0,1,1,1,1,0,1,
-                1,0,0,1,0,1,0,0,0,0,1,0,0,1,1,0,
-                1,0,0,0,0,1,1,0,1,0,1,1,0,0,0,1,
-                0,1,1,1,0,1,1,1,0,0,0,0,0,0,0,0
+            float[] input = {
+                0,1,0,0,0,1,0,1,
+                0,0,0,0,0,0,0,0,
+                0,0,0,0,1,1,0,1,
+                0,0,0,0,0,0,0,0,
+                0,0,1,0,0,0,1,0,
+                0,0,0,0,0,0,0,0,
+                1,1,1,1,1,0,0,1,
+                0,0,0,0,0,0,0,0,
+                0,0,1,0,0,0,1,0,
+                0,0,1,0,0,0,0,1,
+                1,0,1,1,1,1,1,0,
+                0,0,0,0,0,0,0,0,
+                0,0,1,0,0,1,1,1,
+                0,0,0,0,0,0,0,0,
+                0,0,0,1,0,1,0,0,
+                0,0,0,0,0,0,0,0,
+                1,0,1,1,0,1,1,0,
+                0,0,0,0,0,0,0,0,
+                0,0,1,0,1,0,1,0,
+                0,0,0,0,0,0,0,0,
+                0,1,1,1,1,0,0,0,
+                0,0,0,0,0,0,0,0,
+                0,1,0,0,0,0,0,0,
+                0,0,0,0,0,0,0,0,
+                1,1,0,1,0,1,1,0,
+                0,0,0,0,0,0,0,0,
+                0,1,0,1,1,0,0,0,
+                0,0,0,0,0,0,0,0,
+                0,1,0,0,1,1,1,1,
+                0,0,0,0,0,0,0,0,
+                0,1,0,0,0,1,1,0,
+                0,0,0,0,0,0,0,0,
+                0,0,0,1,0,0,0,1
             };
 
             float[] inputM =
@@ -35,7 +62,7 @@ namespace RX_SSDV.Test
             int vLength = viterbi.Process(input.Length, input, outputViterbi);
             int mLength = decoder.Process(vLength, outputViterbi, outputM);
 
-            Logger.LogInfo($"Input arr size: {input.Length}, Viterbi output size； {vLength}, M output siz： {mLength}");
+            Logger.LogInfo($"Input arr size: {input.Length}, Viterbi output size； {vLength}, M output size： {mLength}");
             Logger.PrintArr(outputViterbi, vLength, "Viterbi");
             Logger.PrintArr(outputM, mLength, "M Decoder");
         }

@@ -78,7 +78,7 @@ namespace RX_SSDV.CCSDS
 
                 if ((BinaryUtils.HammingDst(CCSDS_ASM, window) <= 2 || BinaryUtils.HammingDst(CCSDS_ASM, ~window) <= 2) && syncSymbolSize == 32)
                 {
-                    Logger.CLogInfo($"[FrameSync-Debug]Synced ASM at {i}");
+                    Logger.CLogInfo($"[FrameSync-Debug]Synced ASM at {i}, {window.ToString("B32")}");
                 }
                 else if ((ssdvSyncSymbol == window || ssdvSyncSymbol == ~window) && syncSymbolSize == 12)
                 {

@@ -1,6 +1,7 @@
 ﻿using NWaves.Utils;
 using RX_SSDV.Base;
 using RX_SSDV.CCSDS.Viterbi;
+using RX_SSDV.IO;
 using RX_SSDV.Utils;
 using System;
 using System;
@@ -21,6 +22,9 @@ namespace RX_SSDV.CCSDS
         private Deframer deframer1;
         private BitDelay delay;
 
+        private PackAndOutputBits output1;
+        private PackAndOutputBits output2;
+
         private bool useMDecode = false;
 
         private float[] inputBuffer;
@@ -35,6 +39,9 @@ namespace RX_SSDV.CCSDS
             this.useMDecode = useMDecode;
             InitProcessingFlow();
             CheckProcessOutputArr(DIGITAL_BUFFER_SIZE);
+
+            SampleSource.onStart += OpenOutputStream;
+            SampleSource.onStop += CloseOutputStream;
         }
 
         public void InitProcessingFlow()
@@ -45,6 +52,9 @@ namespace RX_SSDV.CCSDS
             mDecoder1 = new MDecoder();
             deframer0 = new Deframer();
             deframer1 = new Deframer();
+
+            output1 = new PackAndOutputBits("C:\\Users\\AstarLC\\Desktop\\Documents\\misc\\test_out_viterbi_1.bin");
+            output2 = new PackAndOutputBits("C:\\Users\\AstarLC\\Desktop\\Documents\\misc\\test_out_viterbi_2.bin");
 
             delay = new BitDelay(1);
         }
@@ -82,13 +92,16 @@ namespace RX_SSDV.CCSDS
 
             //Branch Normal
             int outputSize0 = viterbiDecoder0.Process(inputSize, hardDecisionBits, outputBuffer); ConfigureOutput();
+            //Logger.CPrintArr(inputBuffer, outputSize0, "");
             if(useMDecode) { outputSize0 = mDecoder0.Process(outputSize0, inputBuffer, outputBuffer); ConfigureOutput(); }
+            //output1.Process(outputSize0, inputBuffer, outputBuffer);
             deframer0.Process(outputSize0, inputBuffer, outputBuffer); ConfigureOutput();
 
             //Branch Delay
             delay.Process(inputSize, hardDecisionBits, outputBuffer); ConfigureOutput();
             int outputSize1 = viterbiDecoder1.Process(inputSize, inputBuffer, outputBuffer); ConfigureOutput();
             if (useMDecode) { outputSize1 = mDecoder1.Process(outputSize1, inputBuffer, outputBuffer); ConfigureOutput(); }
+            //output2.Process(outputSize1, inputBuffer, outputBuffer);
             deframer1.Process(outputSize1, inputBuffer, outputBuffer);
 
             //Output
@@ -116,6 +129,18 @@ namespace RX_SSDV.CCSDS
             {
                 hardDecisionBits = new float[arrSize];
             }
+        }
+
+        public void OpenOutputStream()
+        {
+            output1.OpenStream();
+            output2.OpenStream();
+        }
+
+        public void CloseOutputStream()
+        {
+            output1.CloseStream();
+            output2.CloseStream();
         }
     }
 }

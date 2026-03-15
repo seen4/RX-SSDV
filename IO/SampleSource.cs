@@ -1,6 +1,7 @@
 ﻿using NAudio.Wave;
 using NWaves.Effects.Stereo;
 using RX_SSDV.Base;
+using RX_SSDV.DSP;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -16,6 +17,7 @@ namespace RX_SSDV.IO
     {
         public enum DataSourceType
         {
+            SoundCard,
             BasebandFile,
             RTLSDR
         }
@@ -32,6 +34,8 @@ namespace RX_SSDV.IO
         private static SampleAggregator sampleAggregator;
 
         //private static WaveOutEvent waveOutEvent = new WaveOutEvent();
+        public static WasapiLoopbackCapture capture = new WasapiLoopbackCapture();
+
         private static IWavePlayer playbackDevice;
 
         private static bool directRead = false;
@@ -40,9 +44,14 @@ namespace RX_SSDV.IO
         private static bool isSourceAvalible = false;
 
         public const int WAV_BUFFER_SIZE = 2048;
+        public static RingBufferIQ recordBuffer;
 
         public static Action<float[], float[]> onDataAvalible = (samplesReal, samplesImag) => { /*UpdateUI();*/ };
         public static Action<WaveFormat> onSourceChange = (waveFmt) => { };
+
+        public static Action onStart = () => { };
+        public static Action onPause = () => { };
+        public static Action onStop = () => { };
 
         public static void Play()
         {
@@ -54,27 +63,53 @@ namespace RX_SSDV.IO
 
             isSourceAvalible = true;
 
-            ReadSampleDirect();
+            if (sourceType == DataSourceType.BasebandFile)
+                ReadSampleDirect();
+            else if (sourceType == DataSourceType.SoundCard)
+                StartSoundCardRecord();
 
             Logger.LogInfo("[SampleSource]Playing");
             //PlayAudio();
+
+            onStart();
         }
 
         public static void Pause()
         {
-            PauseDirectRead();
+            if (sourceType == DataSourceType.BasebandFile)
+                PauseDirectRead();
+            else if (sourceType == DataSourceType.SoundCard)
+                PauseSoundCardRecord();
+
             Logger.LogInfo("[SampleSource]Paused");
             //PauseAudio();
+
+            onPause();
         }
 
         public static void Stop()
         {
-            StopDirectRead();
+            if (sourceType == DataSourceType.BasebandFile)
+                StopDirectRead();
+
             isSourceAvalible = false;
             Logger.LogInfo("[SampleSource]Stopped");
             //StopAudio();
+
+            onStop();
         }
 
+        public static void StartSoundCardRecord()
+        {
+            capture.StartRecording();
+        }
+
+        public static void PauseSoundCardRecord()
+        {
+            capture.StopRecording();
+        }
+
+        //read from baseband file
         public static void ReadSampleDirect()
         {
             if (!directRead)
@@ -112,24 +147,35 @@ namespace RX_SSDV.IO
             onSourceChange(sampleAggregator.WaveFormat);
         }
 
+        //pause
         public static void PauseDirectRead()
         {
             directReadPause = true;
         }
 
+        //stop
         public static void StopDirectRead()
         {
             directRead = false;
             directReadPause = false;
         }
 
+        //Init sample sources
         public static void InitSource()
         {
             wavFileReader = new WaveFileReader(audioFilePath);
             sampleAggregator = new SampleAggregator(wavFileReader.ToSampleProvider(), WAV_BUFFER_SIZE);
             sampleAggregator.processSamples += onDataAvalible;
+            
+            //capture.DataAvailable 
         }
 
+        public static void ProcessCaptureSamples(float[] inputSamples)
+        {
+            //recordBuffer.Write(inputSamples, );
+        }
+
+        //check output device
         private static void EnsureDeviceCreated()
         {
             if (playbackDevice == null)
@@ -138,11 +184,13 @@ namespace RX_SSDV.IO
             }
         }
 
+        //create output device
         private static void CreateDevice()
         {
             playbackDevice = new WaveOut { DesiredLatency = 200 };
         }
 
+        //check file path
         public static bool CheckPathAvalible(bool showMessage = false)
         {
             bool isPathAvalible = File.Exists(audioFilePath);
@@ -153,6 +201,7 @@ namespace RX_SSDV.IO
             return isPathAvalible;
         }
 
+        //play with audio
         public static void PlayAudio()
         {
             EnsureDeviceCreated();
@@ -172,6 +221,7 @@ namespace RX_SSDV.IO
             onSourceChange(sampleAggregator.WaveFormat);
         }
 
+        //pause
         public static void PauseAudio()
         {
             try
@@ -184,6 +234,7 @@ namespace RX_SSDV.IO
             }
         }
 
+        //stop
         public static void StopAudio()
         {
             try
@@ -197,6 +248,9 @@ namespace RX_SSDV.IO
             }
         }
 
+        /// <summary>
+        /// Update player UI
+        /// </summary>
         public static void UpdateUI()
         {
             TimeSpan totalTime = wavFileReader.TotalTime;

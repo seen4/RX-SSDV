@@ -32,6 +32,11 @@ namespace RX_SSDV.Test
 
             DecodeFixed();
 
+            //Logger.LogInfo("GROUP FIXED ASM");
+            //GenerateFixedInput();
+            //Decode();
+            //PrintResult();
+
             //Logger.LogInfo("GROUP 1");
             //GenerateInput(10);
             //Decode();
@@ -42,10 +47,10 @@ namespace RX_SSDV.Test
             //Decode();
             //PrintResult();
 
-            Logger.LogInfo("GROUP RAND 1");
-            GenerateInputRand();
-            Decode();
-            PrintResult();
+            //Logger.LogInfo("GROUP RAND 1");
+            //GenerateInputRand();
+            //Decode();
+            //PrintResult();
 
             //using(FileStream fs = new FileStream("C:\\Users\\AstarLC\\Desktop\\Documents\\misc\\test_out_viterbi.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite))
             //{
@@ -193,6 +198,70 @@ namespace RX_SSDV.Test
             inputBytesLen = byteInputIndex;
         }
 
+        public void GenerateFixedInput()
+        {
+            int[] fixedInput = new int[] { 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1 };
+            //int[] fixedInput = 
+            //{ 
+            //    0,0,0,0,0,0,1,1,
+            //    0,1,0,1,1,1,0,1,
+            //    0,1,0,0,1,0,0,1,
+            //    1,1,0,0,0,0,1,0,
+            //    0,1,0,0,1,1,1,1,
+            //    1,1,1,1,0,0,1,0,
+            //    0,1,1,0,1,0,0,0,
+            //    0,1,1,0,1,0,1,1,
+            //    0,0,0,1,0,1,0,0,
+            //    0,0,1,0,1,1,0,1,
+            //    0,1,0,0,1,0,0,1,
+            //    1,1,0,0,0,0,1,0,
+            //    0,1,0,0,1,1,1,1,
+            //    1,1,1,1,0,0,1,0,
+            //    0,1,1,0,1,0,0,0,
+            //    0,1,1,0,1,0,1,1
+            //};
+
+            inputArray = new float[fixedInput.Length * 2];
+            inputDataArray = new float[fixedInput.Length];
+
+            int ouc = 0;
+
+            for (int i = 0; i < fixedInput.Length; i++)
+            {
+                //Logger.LogInfo(mod.ToString());
+
+                int input = 0;
+                int nextCode = fixedInput[i];
+                if (nextCode == 0)
+                {
+                    input = viterbi.BranchOutputs[generatorState, 0];
+
+                    //Next state
+                    (int, int) nextState = Trellis.CalcNextStates(generatorState, viterbi.Constraint);
+                    generatorState = nextState.Item1;
+                    inputDataArray[i] = 0;
+
+                    //Logger.LogInfo("input 0");
+                }
+                else
+                {
+                    input = viterbi.BranchOutputs[generatorState, 1];
+
+                    //Next state
+                    (int, int) nextState = Trellis.CalcNextStates(generatorState, viterbi.Constraint);
+                    generatorState = nextState.Item2;
+                    inputDataArray[i] = 1;
+                }
+
+                //Write
+                int input1 = BinaryUtils.ReadInt(input, 2);
+                int input2 = BinaryUtils.ReadInt(input, 1);
+
+                inputArray[ouc++] = input1;
+                inputArray[ouc++] = input2;
+            }
+        }
+
         public void GenerateInputRand()
         {
             inputArray = new float[sampleCount * 2];
@@ -267,24 +336,25 @@ namespace RX_SSDV.Test
         public void DecodeFixed()
         {
             outputArray = new float[sampleCount * 2];
-            float[] inputArr = 
-                {1,1,1,0,1,0,0,0,0,
-                 0,0,0,1,1,1,1,1,1,
-                 1,0,1,0,0,1,1,0,0,
-                 0,0,0,0,0,0,0,0,1,
-                 0,1,1,0,0,1,1,1,1,
-                 1,1,1,1,1,1,0,0,1,
-                 0,0,1,0,1,0,0,0,0,
-                 0,0,0,1,1,1,1,1,1,
-                 0,1,0,0,1,1,1,0,1,
-                 1,0,1,0,0,1,1,0,0,
-                 0,0,0,1,1,0,0,1,1,
-                 1,0,1,0,0,1,1,1,1,
-                 1,0,1,1,1,0,1,0,0,
-                 1,0,0,0,0,0,1,1,0,
-                 0,0,1,0,1,1,1,0,1,
-                 0,0,1,0,0,0,0,1,0,
-                 1,1,0,0 };
+            float[] inputArr =
+            {
+                0,0,0,0,0,0,1,1,
+                0,1,0,1,1,1,0,1,
+                0,1,0,0,1,0,0,1,
+                1,1,0,0,0,0,1,0,
+                0,1,0,0,1,1,1,1,
+                1,1,1,1,0,0,1,0,
+                0,1,1,0,1,0,0,0,
+                0,1,1,0,1,0,1,1,
+                0,0,0,1,0,1,0,0,
+                0,0,1,0,1,1,0,1,
+                0,1,0,0,1,0,0,1,
+                1,1,0,0,0,0,1,0,
+                0,1,0,0,1,1,1,1,
+                1,1,1,1,0,0,1,0,
+                0,1,1,0,1,0,0,0,
+                0,1,1,0,1,0,1,1
+            };
 
             float[] outputArr = new float[inputArr.Length];
 

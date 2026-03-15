@@ -143,14 +143,14 @@ namespace RX_SSDV.DSP
         {
             fft = new Fft(FFT_SIZE);
             bpskDemod = new BpskDemod();
-            ccsds = new CCSDSDecoder(false);
+            ccsds = new CCSDSDecoder(true);
 
             UpdateBitmap(spectrum.Width);
 
             SampleSource.onDataAvalible += ProcessData;
             SampleSource.onSourceChange += OnSourceChange;
-            spectrum.onSizeChange += (w, h) => { UpdateBitmap(w); };
 
+            spectrum.onSizeChange += (w, h) => { UpdateBitmap(w); };
             StartDrawing();
         }
 

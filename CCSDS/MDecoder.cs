@@ -1,4 +1,5 @@
-﻿using RX_SSDV.Utils;
+﻿using RX_SSDV.Base;
+using RX_SSDV.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +11,7 @@ namespace RX_SSDV.CCSDS
     public class MDecoder : DigitalProcessingBlock
     {
         private int rxBitState = 0;
+        private int lastBit = 0;
 
         public static readonly byte[] mDecodeTab =
         {
@@ -52,24 +54,29 @@ namespace RX_SSDV.CCSDS
             base.Process(inputArr, outputArr, inputSize);
 
             int outputIndex = 0;
-            for(int i = 0; i + 8 <= historyBuffer.Length; i+=8)
+            for(int i = 0; i < historyBuffer.Length; i++)
             {
-                //Pack input bits
-                byte input = 0;
-                for(int j = 0; j < 8; j++)
-                {
-                    int inputBit = (int)historyBuffer[i + j];
-                    input <<= 1;
-                    input |= (byte)(inputBit & 1);
-                }
+                //Logger.CLog(historyBuffer[i].ToString());
+                int output = (lastBit ^ (int)historyBuffer[i]) & 1;
+                lastBit = output;
+                outputArr[outputIndex++] = output;
 
-                //Unpack output bits
-                byte output = DecodeSingle(input);
-                for(int j = 0; j < 8; j++)
-                {
-                    byte temp = (byte)((output >> (7 - j)) & 1);
-                    outputArr[outputIndex++] = temp;
-                }
+                //Pack input bits
+                //byte input = 0;
+                //for (int j = 0; j < 8; j++)
+                //{
+                //    int inputBit = (int)historyBuffer[i + j];
+                //    input <<= 1;
+                //    input |= (byte)(inputBit & 1);
+                //}
+
+                ////Unpack output bits
+                //byte output = DecodeSingle(input);
+                //for (int j = 0; j < 8; j++)
+                //{
+                //    byte temp = (byte)((output >> (7 - j)) & 1);
+                //    outputArr[outputIndex++] = temp;
+                //}
             }
             CompleteProcess(outputIndex);
             return outputIndex;

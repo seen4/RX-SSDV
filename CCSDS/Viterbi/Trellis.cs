@@ -54,7 +54,7 @@ namespace RX_SSDV.CCSDS.Viterbi
             newPathDst = new int[stateCount];
 
             for (int i = 1; i < pathDst.Length; i++)
-                pathDst[i] = 0;
+                pathDst[i] = int.MaxValue / 2;
         }
 
         /// <summary>
@@ -121,7 +121,7 @@ namespace RX_SSDV.CCSDS.Viterbi
         /// Calculate Hamming distance between input bits and current state.
         /// </summary>
         /// <param name="bits">Input bits</param>
-        /// <param name="curstate">Current state</param>
+        /// <param name="curState">Current state</param>
         /// <param name="input">New bit of state</param>
         /// <returns>The Hamming distance</returns>
         public int HammingDst(byte bits, int curState, int input)
@@ -135,9 +135,7 @@ namespace RX_SSDV.CCSDS.Viterbi
             byte tx2 = ReadInt(state, 2);
 
             //Calcucate Hamming dst
-            int dst = 0;
-            dst += rx1 == tx1 ? 0 : 1;
-            dst += rx2 == tx2 ? 0 : 1;
+            int dst = (rx1 ^ tx1) + (rx2 ^ tx2);
 
             return dst;
         }
