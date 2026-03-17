@@ -2,6 +2,7 @@
 using RX_SSDV.DSP;
 using System;
 using System.Collections.Generic;
+using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,7 +26,6 @@ namespace RX_SSDV.CCSDS.Viterbi
          * 109      79       NASA-DSN uninverted
          */
 
-        //Use reversed 'NASA-DSN uninverted' to adapt the 'Encode CCSDS 27' block of GNU Radio. (idk why)
 
         /* For origin 'cc_decode'
          * poly1 = 0b_0111_1001;
@@ -36,8 +36,9 @@ namespace RX_SSDV.CCSDS.Viterbi
          * poly2 = 0b_0111_1001;
          */
 
-        public const int poly1 = 0b_0101_1011; //0b_0101_1011
-        public const int poly2 = 0b_0111_1001;
+        public const int poly1 = 0b_0111_1001;//79
+        public const int poly2 = 0b_0101_1011; //109
+        
 
         private int n = 1;
         public int AdderCount => n;
@@ -98,7 +99,7 @@ namespace RX_SSDV.CCSDS.Viterbi
 
                 //Get input
                 byte input1 = (byte)historyBuffer[i];
-                byte input2 = (byte)historyBuffer[i + 1];
+                byte input2 = (byte)((int)historyBuffer[i + 1] ^ 1); //In HIT Vitrbi implementation,the second output parity bit is being flipped.
                 byte bits = (byte)((input1 << 1) + input2);
 
                 //Update surviving path
@@ -150,5 +151,11 @@ namespace RX_SSDV.CCSDS.Viterbi
                 }
             }
         }
+
+        public void ClearViterbi()
+        {
+            trellis.ClearTrellis();
+        }
+
     }
 }

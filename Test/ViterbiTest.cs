@@ -1,4 +1,5 @@
-﻿using RX_SSDV.Base;
+﻿using NWaves.Utils;
+using RX_SSDV.Base;
 using RX_SSDV.CCSDS.Viterbi;
 using RX_SSDV.Utils;
 using System;
@@ -338,24 +339,17 @@ namespace RX_SSDV.Test
             outputArray = new float[sampleCount * 2];
             float[] inputArr =
             {
-                0,0,0,0,0,0,1,1,
-                0,1,0,1,1,1,0,1,
-                0,1,0,0,1,0,0,1,
-                1,1,0,0,0,0,1,0,
-                0,1,0,0,1,1,1,1,
-                1,1,1,1,0,0,1,0,
-                0,1,1,0,1,0,0,0,
-                0,1,1,0,1,0,1,1,
-                0,0,0,1,0,1,0,0,
-                0,0,1,0,1,1,0,1,
-                0,1,0,0,1,0,0,1,
-                1,1,0,0,0,0,1,0,
-                0,1,0,0,1,1,1,1,
-                1,1,1,1,0,0,1,0,
-                0,1,1,0,1,0,0,0,
-                0,1,1,0,1,0,1,1
+            0,1,0,1,0,1,1,0,
+            0,0,0,0,1,0,0,0,
+            0,0,0,1,1,1,0,0,
+            1,0,0,1,0,1,1,1,
+            0,0,0,1,1,0,1,0,
+            1,0,1,0,0,1,1,1,
+            0,0,1,1,1,1,0,1,
+            0,0,1,1,1,1,1,0,
+            0,1,0,0,0,0,1,0,
+            0,0,1,0,0,1,
             };
-
             float[] outputArr = new float[inputArr.Length];
 
             int outSize = viterbi.Process(inputArr.Length, inputArr, outputArr);
