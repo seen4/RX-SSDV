@@ -58,7 +58,7 @@ namespace RX_SSDV.CCSDS
             {
                 //Logger.CLog(historyBuffer[i].ToString());
                 int output = (lastBit ^ (int)historyBuffer[i]) & 1;
-                lastBit = output;
+                lastBit = (int)historyBuffer[i];
                 outputArr[outputIndex++] = output;
 
                 //Pack input bits
