@@ -26,6 +26,7 @@ namespace RX_SSDV.CCSDS
         //private PackAndOutputBits output2;
 
         private bool useMDecode = false;
+        private int deframerPacketSize = 233;
 
         private float[] inputBuffer;
         private float[] outputBuffer;
@@ -50,8 +51,8 @@ namespace RX_SSDV.CCSDS
             viterbiDecoder1 = new Viterbi.Viterbi();
             mDecoder0 = new MDecoder();
             mDecoder1 = new MDecoder();
-            deframer0 = new Deframer();
-            deframer1 = new Deframer();
+            deframer0 = new Deframer(deframerPacketSize);
+            deframer1 = new Deframer(deframerPacketSize);
 
             //output1 = new PackAndOutputBits("C:\\Users\\AstarLC\\Desktop\\Documents\\misc\\test_out_viterbi_1.bin");
             //output2 = new PackAndOutputBits("C:\\Users\\AstarLC\\Desktop\\Documents\\misc\\test_out_viterbi_2.bin");
