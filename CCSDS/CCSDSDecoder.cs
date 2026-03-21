@@ -26,7 +26,7 @@ namespace RX_SSDV.CCSDS
         //private PackAndOutputBits output2;
 
         private bool useMDecode = false;
-        private int deframerPacketSize = 233;
+        private int deframerPacketSize = 223;
 
         private float[] inputBuffer;
         private float[] outputBuffer;
