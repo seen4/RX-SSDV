@@ -12,7 +12,7 @@ namespace RX_SSDV.Test
     {
         public static void Test()
         {
-            Deframer deframer = new Deframer();
+            Deframer deframer = new Deframer(255);
 
             float[] inputArr =
             {
