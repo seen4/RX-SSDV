@@ -25,7 +25,7 @@ namespace RX_SSDV.CCSDS
         //private PackAndOutputBits output1;
         //private PackAndOutputBits output2;
 
-        private bool useMDecode = true;
+        private bool useMDecode = false;
 
         private float[] inputBuffer;
         private float[] outputBuffer;
@@ -90,20 +90,15 @@ namespace RX_SSDV.CCSDS
             
             HardDecision(inputSamplesI, inputSamplesQ, hardDecisionBits, inputSize);
 
-            
             //Branch Normal
             int outputSize0 = viterbiDecoder0.Process(inputSize, hardDecisionBits, outputBuffer); ConfigureOutput();
-            //Logger.CPrintArr(inputBuffer, outputSize0, "");
-            if(!useMDecode) { outputSize0 = mDecoder0.Process(outputSize0, inputBuffer, outputBuffer); ConfigureOutput(); }
-            //output1.Process(outputSize0, inputBuffer, outputBuffer);
+            if (useMDecode) { outputSize0 = mDecoder0.Process(outputSize0, inputBuffer, outputBuffer); ConfigureOutput(); }
             deframer0.Process(outputSize0, inputBuffer, outputBuffer); ConfigureOutput();
 
             //Branch Delay
-            
             delay.Process(inputSize, hardDecisionBits, outputBuffer); ConfigureOutput();
             int outputSize1 = viterbiDecoder1.Process(inputSize, inputBuffer, outputBuffer); ConfigureOutput();
             if (useMDecode) { outputSize1 = mDecoder1.Process(outputSize1, inputBuffer, outputBuffer); ConfigureOutput(); }
-            //output2.Process(outputSize1, inputBuffer, outputBuffer);
             deframer1.Process(outputSize1, inputBuffer, outputBuffer);
 
             //Output
