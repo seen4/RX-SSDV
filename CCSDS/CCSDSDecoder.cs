@@ -14,6 +14,7 @@ namespace RX_SSDV.CCSDS
 {
     public class CCSDSDecoder
     {
+        //Processors
         private Viterbi.Viterbi viterbiDecoder0;
         private Viterbi.Viterbi viterbiDecoder1;
         private MDecoder mDecoder0;
@@ -22,27 +23,26 @@ namespace RX_SSDV.CCSDS
         private Deframer deframer1;
         private BitDelay delay;
 
-        //private PackAndOutputBits output1;
-        //private PackAndOutputBits output2;
-
+        //Decoder Config
         private bool useMDecode = false;
-        private int deframerPacketSize = 223;
+        private bool useDescrambling = false;
+        private int packetSize = 223;
 
+        //Buffers
         private float[] inputBuffer;
         private float[] outputBuffer;
 
         private float[] hardDecisionBits;
+        private byte[] packetByteBuffer;
 
         public const int DIGITAL_BUFFER_SIZE = 1024;
 
-        public CCSDSDecoder(bool useMDecode)
+        public CCSDSDecoder(bool useMDecode, bool useDescrambling)
         {
             this.useMDecode = useMDecode;
+            this.useDescrambling = useDescrambling;
             InitProcessingFlow();
             CheckProcessOutputArr(DIGITAL_BUFFER_SIZE);
-
-            //SampleSource.onStart += OpenOutputStream;
-            //SampleSource.onStop += CloseOutputStream;
         }
 
         public void InitProcessingFlow()
@@ -51,11 +51,12 @@ namespace RX_SSDV.CCSDS
             viterbiDecoder1 = new Viterbi.Viterbi();
             mDecoder0 = new MDecoder();
             mDecoder1 = new MDecoder();
-            deframer0 = new Deframer(deframerPacketSize);
-            deframer1 = new Deframer(deframerPacketSize);
+            deframer0 = new Deframer(packetSize * 8);
+            deframer1 = new Deframer(packetSize * 8);
 
-            //output1 = new PackAndOutputBits("C:\\Users\\AstarLC\\Desktop\\Documents\\misc\\test_out_viterbi_1.bin");
-            //output2 = new PackAndOutputBits("C:\\Users\\AstarLC\\Desktop\\Documents\\misc\\test_out_viterbi_2.bin");
+            packetByteBuffer = new byte[packetSize];
+            deframer0.onPacketProcess += ProcessPacket;
+            deframer1.onPacketProcess += ProcessPacket;
 
             delay = new BitDelay(1);
         }
@@ -107,6 +108,31 @@ namespace RX_SSDV.CCSDS
             outputBuffer.FastCopyTo(outputBits, outputSize, 0, 0);
         }
 
+        public void ProcessPacket(byte[] bits)
+        {
+            //bits.FastCopyTo(packetBitBuffer, bits.Length);
+
+            int bufferInputIndex = 0;
+            for (int i = 0; i < bits.Length; i += 8) {
+
+                //Pack bytes
+                byte inputByte = 0;
+                for (int j = 0; j < 8; j++)
+                {
+                    byte inputBit = bits[i + j];
+                    inputByte <<= 1;
+                    inputByte |= (byte)(inputBit & 1);
+                }
+
+                if (useDescrambling) inputByte ^= DecodeTabs.descramblingSequence[bufferInputIndex%255];
+                packetByteBuffer[bufferInputIndex++] = inputByte;
+
+                if (bufferInputIndex - 1 != 0 && (bufferInputIndex - 1) % 16 == 0) Logger.CLog("\n");
+                Logger.CLog(inputByte.ToString("X2") + " ");
+            }
+            Logger.CLog("\n");
+        }
+
         /// <summary>
         /// Check output if arrays avalible, if not, init array(s) by 'arrSize'.
         /// </summary>
@@ -128,17 +154,5 @@ namespace RX_SSDV.CCSDS
                 hardDecisionBits = new float[arrSize];
             }
         }
-
-        //public void OpenOutputStream()
-        //{
-        //    output1.OpenStream();
-        //    output2.OpenStream();
-        //}
-
-        //public void CloseOutputStream()
-        //{
-        //    output1.CloseStream();
-        //    output2.CloseStream();
-        //}
     }
 }

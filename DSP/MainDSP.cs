@@ -143,7 +143,7 @@ namespace RX_SSDV.DSP
         {
             fft = new Fft(FFT_SIZE);
             bpskDemod = new BpskDemod();
-            ccsds = new CCSDSDecoder(true);
+            ccsds = new CCSDSDecoder(true, true);
 
             UpdateBitmap(spectrum.Width);
 
