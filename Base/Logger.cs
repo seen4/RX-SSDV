@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Policy;
@@ -105,7 +106,7 @@ namespace RX_SSDV.Base
             UpdateLogText();
         }
 
-        public static void PrintArr(float[] arrInput, int arrSize, string msg)
+        public static void PrintArr(IList arrInput, int arrSize, string msg)
         {
             StringBuilder sb = new StringBuilder();
             int count = 0;
@@ -131,7 +132,7 @@ namespace RX_SSDV.Base
             sb.Clear();
         }
 
-        public static void CPrintArr(float[] arrInput, int arrSize, string msg)
+        public static void CPrintArr(IList arrInput, int arrSize, string msg)
         {
             StringBuilder sb = new StringBuilder();
             int count = 0;
