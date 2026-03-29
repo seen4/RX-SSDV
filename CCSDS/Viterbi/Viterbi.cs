@@ -86,7 +86,7 @@ namespace RX_SSDV.CCSDS.Viterbi
             CalcOutputs();
         }
 
-        public override int Process(int inputSize, float[] inputArr, float[] outputArr)
+        public override int Process(int inputSize, byte[] inputArr, byte[] outputArr)
         {
             base.Process(inputArr, outputArr, inputSize);
             int outputSize = 0, processedCount = 0;
@@ -98,8 +98,8 @@ namespace RX_SSDV.CCSDS.Viterbi
                     break;
 
                 //Get input
-                byte input1 = (byte)historyBuffer[i];
-                byte input2 = (byte)((int)historyBuffer[i + 1] ^ 1); //In HIT Vitrbi implementation,the second output parity bit is being flipped.
+                byte input1 = historyBuffer[i];
+                byte input2 = (byte)(historyBuffer[i + 1] ^ 1); //In HIT Vitrbi implementation,the second output parity bit is being flipped.
                 byte bits = (byte)((input1 << 1) + input2);
 
                 //Update surviving path
@@ -114,7 +114,7 @@ namespace RX_SSDV.CCSDS.Viterbi
             for (int i = trellis.stateList.Count - trellis.StateCount; i >= 0; i -= trellis.StateCount)
             {
                 int input = ReadInt(state, 6); //Read input code from current state
-                outputArr[outputSize] = input; //Output
+                outputArr[outputSize] = (byte)input; //Output
                 state = trellis.stateList[i + state]; //Find previous state of current state 
 
                 outputSize++;

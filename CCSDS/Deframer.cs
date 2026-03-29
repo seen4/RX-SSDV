@@ -38,67 +38,61 @@ namespace RX_SSDV.CCSDS
         }
 
         //This module have no stream output
-        public override int Process(int inputSize, float[] inputArr, float[] outputArr)
+        public override int Process(int inputSize, byte[] inputArr, byte[] outputArr)
         {
             base.Process(inputArr, outputArr, inputSize);
+
+            //Output bits(Secondary)
+            if (isPackingBits)
+            {
+                int remainLength = packetSize - packetBitsInc;
+                WritePacketBuffer(0, Math.Min(remainLength, historyBuffer.Length));
+                if (remainLength <= historyBuffer.Length)
+                {
+                    isPackingBits = false;
+                    packetBitsInc = 0;
+                    SendBits();
+                }
+                else
+                {
+                    int count = historyBuffer.Length;
+                    CompleteProcess(count);
+                    return count;
+                }
+            }
 
             int processedCount = 0;
             for (int i = 0; i + syncwordSize <= historyBuffer.Length; i++)
             {
                 processedCount++;
 
-                if (isPackingBits)
-                {
-                    int remainBits = packetSize - packetBitsInc;
-                    if (remainBits > historyBuffer.Length)
-                    {
-                        for (int j = 0; j < historyBuffer.Length; j++)
-                        {
-                            packetBits[packetBitsInc++] = (byte)historyBuffer[j];
-                        }
-                        continue;
-                    }
-                    else
-                    {
-                        for (int j = 0; j < remainBits; j++)
-                        {
-                            packetBits[packetBitsInc++] = (byte)historyBuffer[j];
-                        }
-                        isPackingBits = false;
-                        packetBitsInc = 0;
-                        SendBits();
-                    }
-                }
-
                 uint window = 0;
                 for (int j = 0; j < syncwordSize; j++)
                 {
                     window <<= 1;
-                    window |= (byte)((int)historyBuffer[i + j] & 0b_01);
+                    window |= (byte)(historyBuffer[i + j] & 0b_01);
                 }
-
-                //Logger.CLogInfo($"[FrameSync-Debug] {window.ToString("B32")}");
 
                 if ((BinaryUtils.HammingDst(CCSDS_ASM, window) <= 2 || BinaryUtils.HammingDst(CCSDS_ASM, ~window) <= 2) && syncwordSize == 32)
                 {
                     Logger.CLogInfo($"[FrameSync-Debug]Synced ASM at {i}, {window.ToString("B32")}");
-                    if (i + syncwordSize + packetSize <= historyBuffer.Length)
-                    {
-                        for (int k = 0; k < packetSize; k++)
-                        {
-                            packetBits[k] = (byte)historyBuffer[i + syncwordSize + k];
-                        }
-                        SendBits();
-                    }
+
+                    // Output bits(Primary)
+                    int packetIndex = i + syncwordSize;
+                    int remainLength = historyBuffer.Length - packetIndex;
+                    WritePacketBuffer(packetIndex, Math.Min(remainLength, packetSize));
+                    if (remainLength < packetSize)
+                        isPackingBits = true;
                     else
                     {
-                        isPackingBits = true;
-                        int remainLength = historyBuffer.Length - i - syncwordSize;
-                        for (int k = 0; k < remainLength; k++)
-                        {
-                            packetBits[packetBitsInc++] = (byte)historyBuffer[i + syncwordSize + k];
-                        }
+                        packetBitsInc = 0;
+                        SendBits();
                     }
+
+                    //Stop scanning to avoid incorrect output;
+                    int count = historyBuffer.Length;
+                    CompleteProcess(count);
+                    return count;
                 }
                 //else if ((ssdvSyncSymbol == window || ssdvSyncSymbol == ~window) && syncSymbolSize == 12)
                 //{
@@ -110,11 +104,19 @@ namespace RX_SSDV.CCSDS
             return processedCount;
         }
 
+        private void WritePacketBuffer(int index, int length)
+        {
+            for (int i = 0; i < length; i++)
+            {
+                packetBits[packetBitsInc++] = (byte)historyBuffer[index + i];
+            }
+        }
+
         private void SendBits()
         {
             //TODO: data process
             //The bit data of current packet was stored in 'packetBits' array
-            Logger.CLogInfo($"[Packet RX] Packet received, length = { packetSize }");
+            Logger.CLogInfo($"[Packet RX] Packet received, length = { packetSize }bits({ packetSize / 8 }bytes)");
             //Logger.CPrintArr(packetBits, packetBits.Length, "Packet data");
             onPacketProcess(packetBits);
         }

@@ -49,17 +49,17 @@ namespace RX_SSDV.CCSDS
         //    0x84, 0x85, 0x87, 0x86, 0x82, 0x83, 0x81, 0x80
         //};
 
-        public override int Process(int inputSize, float[] inputArr, float[] outputArr)
+        public override int Process(int inputSize, byte[] inputArr, byte[] outputArr)
         {
             base.Process(inputArr, outputArr, inputSize);
 
-            int outputIndex = 0;
+            int processedCount = historyBuffer.Length;
             for(int i = 0; i < historyBuffer.Length; i++)
             {
                 //Logger.CLog(historyBuffer[i].ToString());
-                int output = (lastBit ^ (int)historyBuffer[i]) & 1;
-                lastBit = (int)historyBuffer[i];
-                outputArr[outputIndex++] = output;
+                byte output = (byte)((lastBit ^ historyBuffer[i]) & 1);
+                lastBit = historyBuffer[i];
+                outputArr[i] = output;
 
                 //Pack input bits
                 //byte input = 0;
@@ -78,28 +78,8 @@ namespace RX_SSDV.CCSDS
                 //    outputArr[outputIndex++] = temp;
                 //}
             }
-            CompleteProcess(outputIndex);
-            return outputIndex;
+            CompleteProcess(processedCount);
+            return processedCount;
         }
-
-        //public byte DecodeSingle(byte input)
-        //{
-        //    byte output;
-        //    if (rxBitState == 1)
-        //    {
-        //        output = mDecodeTab[0xFF - input];
-        //    }
-        //    else
-        //    {
-        //        output = mDecodeTab[input];
-        //    }
-        //    rxBitState = input & 0b_01;
-        //    return output;
-        //}
-
-        //public void Reset()
-        //{
-        //    rxBitState = 0;
-        //}
     }
 }

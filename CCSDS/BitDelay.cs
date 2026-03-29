@@ -9,15 +9,15 @@ namespace RX_SSDV.CCSDS
     public class BitDelay : DigitalProcessingBlock
     {
         private int delayBits = 0;
-        private float[] delayBuffer;
+        private byte[] delayBuffer;
 
         public BitDelay(int delayBits)
         {
             this.delayBits = delayBits;
-            delayBuffer = new float[delayBits];
+            delayBuffer = new byte[delayBits];
         }
 
-        public override int Process(int inputSize, float[] inputArr, float[] outputArr)
+        public override int Process(int inputSize, byte[] inputArr, byte[] outputArr)
         {
             //base.Process(inputArr, outputArr, inputSize);
 

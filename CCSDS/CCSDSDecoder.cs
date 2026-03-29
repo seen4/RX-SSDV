@@ -29,10 +29,10 @@ namespace RX_SSDV.CCSDS
         private int packetSize = 223;
 
         //Buffers
-        private float[] inputBuffer;
-        private float[] outputBuffer;
+        private byte[] inputBuffer;
+        private byte[] outputBuffer;
 
-        private float[] hardDecisionBits;
+        private byte[] hardDecisionBits;
         private byte[] packetByteBuffer;
 
         public const int DIGITAL_BUFFER_SIZE = 1024;
@@ -63,12 +63,12 @@ namespace RX_SSDV.CCSDS
 
         private void ConfigureOutput()
         {
-            float[] temp = outputBuffer;
+            byte[] temp = outputBuffer;
             outputBuffer = inputBuffer;
             inputBuffer = temp;
         }
 
-        public static void HardDecision(float[] inputSamplesI, float[] inputSamplesQ, float[] outputBits, int inputSize = -1)
+        public static void HardDecision(float[] inputSamplesI, float[] inputSamplesQ, byte[] outputBits, int inputSize = -1)
         {
             inputSize = inputSize == -1 ? inputSamplesI.Length : inputSize;
             if (inputSize <= 0)
@@ -78,11 +78,11 @@ namespace RX_SSDV.CCSDS
 
             for (int i = 0; i < inputSize; i++)
             {
-                outputBits[i] = inputSamplesI[i] > 0 ? 1 : 0;
+                outputBits[i] = (byte)(inputSamplesI[i] > 0 ? 1 : 0);
             }
         }
 
-        public void Process(float[] inputSamplesI, float[] inputSamplesQ, float[] outputBits, out int outputSize, int inputSize = -1)
+        public void Process(float[] inputSamplesI, float[] inputSamplesQ, byte[] outputBits, out int outputSize, int inputSize = -1)
         {
             inputSize = inputSize == -1 ? inputSamplesI.Length : inputSize;
             if (inputSize <= 0)
@@ -141,17 +141,17 @@ namespace RX_SSDV.CCSDS
         {
             if (ArrayUtil.CheckNeedUpdate(outputBuffer, arrSize))
             {
-                outputBuffer = new float[arrSize];
+                outputBuffer = new byte[arrSize];
             }
 
             if (ArrayUtil.CheckNeedUpdate(inputBuffer, arrSize))
             {
-                inputBuffer = new float[arrSize];
+                inputBuffer = new byte[arrSize];
             }
 
             if (ArrayUtil.CheckNeedUpdate(hardDecisionBits, arrSize))
             {
-                hardDecisionBits = new float[arrSize];
+                hardDecisionBits = new byte[arrSize];
             }
         }
     }

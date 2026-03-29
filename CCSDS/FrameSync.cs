@@ -17,7 +17,7 @@ namespace RX_SSDV.CCSDS
 
         public FrameSync() { }
 
-        public override int Process(int inputSize, float[] inputArr, float[] outputArr)
+        public override int Process(int inputSize, byte[] inputArr, byte[] outputArr)
         {
             base.Process(inputArr, outputArr, inputSize);
 
