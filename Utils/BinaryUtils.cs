@@ -62,7 +62,5 @@ namespace RX_SSDV.Utils
             uint xor = x ^ y;
             return BitOperations.PopCount(xor);
         }
-
-
     }
 }

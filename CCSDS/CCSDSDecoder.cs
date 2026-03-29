@@ -1,6 +1,7 @@
 ﻿using NWaves.Utils;
 using RX_SSDV.Base;
 using RX_SSDV.CCSDS.Viterbi;
+using RX_SSDV.Decoder;
 using RX_SSDV.IO;
 using RX_SSDV.Utils;
 using System;
@@ -23,10 +24,13 @@ namespace RX_SSDV.CCSDS
         private Deframer deframer1;
         private BitDelay delay;
 
+        //Decoder
+        private ITransportDecoder decoder;
+
         //Decoder Config
-        private bool useMDecode = false;
+        private bool useDiffDecode = false;
         private bool useDescrambling = false;
-        private int packetSize = 223;
+        private int packetSize = 255;
 
         //Buffers
         private byte[] inputBuffer;
@@ -37,10 +41,13 @@ namespace RX_SSDV.CCSDS
 
         public const int DIGITAL_BUFFER_SIZE = 1024;
 
-        public CCSDSDecoder(bool useMDecode, bool useDescrambling)
+        public CCSDSDecoder(bool useDiffDecode, bool useDescrambling, int frameSize, ITransportDecoder decoder)
         {
-            this.useMDecode = useMDecode;
+            this.useDiffDecode = useDiffDecode;
             this.useDescrambling = useDescrambling;
+            this.decoder = decoder;
+            packetSize = frameSize;
+
             InitProcessingFlow();
             CheckProcessOutputArr(DIGITAL_BUFFER_SIZE);
         }
@@ -94,13 +101,13 @@ namespace RX_SSDV.CCSDS
 
             //Branch Normal
             int outputSize0 = viterbiDecoder0.Process(inputSize, hardDecisionBits, outputBuffer); ConfigureOutput();
-            if (useMDecode) { outputSize0 = mDecoder0.Process(outputSize0, inputBuffer, outputBuffer); ConfigureOutput(); }
+            if (useDiffDecode) { outputSize0 = mDecoder0.Process(outputSize0, inputBuffer, outputBuffer); ConfigureOutput(); }
             deframer0.Process(outputSize0, inputBuffer, outputBuffer); ConfigureOutput();
 
             //Branch Delay
             delay.Process(inputSize, hardDecisionBits, outputBuffer); ConfigureOutput();
             int outputSize1 = viterbiDecoder1.Process(inputSize, inputBuffer, outputBuffer); ConfigureOutput();
-            if (useMDecode) { outputSize1 = mDecoder1.Process(outputSize1, inputBuffer, outputBuffer); ConfigureOutput(); }
+            if (useDiffDecode) { outputSize1 = mDecoder1.Process(outputSize1, inputBuffer, outputBuffer); ConfigureOutput(); }
             deframer1.Process(outputSize1, inputBuffer, outputBuffer);
 
             //Output
@@ -131,6 +138,8 @@ namespace RX_SSDV.CCSDS
                 Logger.CLog(inputByte.ToString("X2") + " ");
             }
             Logger.CLog("\n");
+
+            decoder.ProcessPacket(packetByteBuffer);
         }
 
         /// <summary>

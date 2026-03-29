@@ -2,7 +2,9 @@
 using NWaves.Filters.Base;
 using NWaves.Transforms;
 using NWaves.Utils;
+using RX_SSDV.Base;
 using RX_SSDV.CCSDS;
+using RX_SSDV.Decoder;
 using RX_SSDV.Graphic;
 using RX_SSDV.IO;
 using RX_SSDV.Utils;
@@ -143,7 +145,7 @@ namespace RX_SSDV.DSP
         {
             fft = new Fft(FFT_SIZE);
             bpskDemod = new BpskDemod();
-            ccsds = new CCSDSDecoder(true, true);
+            ccsds = new CCSDSDecoder(true, true, 255, new AsrtuDecoder());
 
             UpdateBitmap(spectrum.Width);
 
