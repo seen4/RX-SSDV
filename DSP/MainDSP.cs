@@ -413,7 +413,8 @@ namespace RX_SSDV.DSP
                                 x = lastX + 1;
                             }
                             int value = (int)Math.Clamp(data[k] * 20, 0, 255);
-                            spectrumCacheBitmap.SetPixel(x, 0, Color.FromArgb(value, 0, 255 / 4));
+                            //spectrumCacheBitmap.SetPixel(x, 0, Color.FromArgb(value, 0, 255 / 4));
+                            spectrumCacheBitmap.SetPixel(x, 0, ColorFade.GetColorHSV(value, 0, 255));
                             lastX = x;
                         }
                     }
