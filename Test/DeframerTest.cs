@@ -14,7 +14,7 @@ namespace RX_SSDV.Test
         {
             Deframer deframer = new Deframer(255);
 
-            float[] inputArr =
+            byte[] inputArr =
             {
                 1, 1, 1, 0,
                 0, 1, 0, 1,
@@ -59,7 +59,7 @@ namespace RX_SSDV.Test
                 0, 1, 0, 1
             };
 
-            float[] outputArr = new float[inputArr.Length];
+            byte[] outputArr = new byte[inputArr.Length];
 
             deframer.Process(inputArr.Length, inputArr, outputArr);
 

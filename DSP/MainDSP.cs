@@ -107,7 +107,7 @@ namespace RX_SSDV.DSP
 
         //CCSDS Decode
         public CCSDSDecoder ccsds;
-        private float[] decodeOutput;
+        private byte[] decodeOutput;
         private int decodeOutputSize;
 
         public float ConstellationMultiply
@@ -610,7 +610,7 @@ namespace RX_SSDV.DSP
 
             if (ArrayUtil.CheckNeedUpdate(decodeOutput, decodeOutputSize))
             {
-                decodeOutput = new float[decodeOutputSize];
+                decodeOutput = new byte[decodeOutputSize];
             }
         }
     }

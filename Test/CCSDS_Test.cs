@@ -13,7 +13,7 @@ namespace RX_SSDV.Test
     {
         public static void Test()
         {
-            float[] input = {
+            byte[] input = {
                 0,1,0,0,0,1,0,1,
                 0,0,0,0,0,0,0,0,
                 0,0,0,0,1,1,0,1,
@@ -49,12 +49,12 @@ namespace RX_SSDV.Test
                 0,0,0,1,0,0,0,1
             };
 
-            float[] inputM =
+            byte[] inputM =
             {
 
             };
-            float[] outputViterbi = new float[input.Length];
-            float[] outputM = new float[input.Length];
+            byte[] outputViterbi = new byte[input.Length];
+            byte[] outputM = new byte[input.Length];
 
             Viterbi viterbi = new Viterbi();
             MDecoder decoder = new MDecoder();

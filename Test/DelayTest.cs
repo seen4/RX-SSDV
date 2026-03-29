@@ -19,19 +19,19 @@ namespace RX_SSDV.Test
 
         public static void TestFunc(BitDelay delay)
         {
-            float[] input = new float[32];
-            float[] output = new float[32];
+            byte[] input = new byte[32];
+            byte[] output = new byte[32];
             Random random = new Random();
             for (int i = 0; i < input.Length; i++)
             {
-                input[i] = random.Next(2);
+                input[i] = (byte)random.Next(2);
             }
 
             delay.Process(32, input, output);
             PrintResult(input, output);
         }
 
-        public static void PrintResult(float[] inputArr, float[] outputArr)
+        public static void PrintResult(byte[] inputArr, byte[] outputArr)
         {
             StringBuilder sb = new StringBuilder();
             int count = 0;

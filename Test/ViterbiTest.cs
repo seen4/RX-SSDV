@@ -16,9 +16,9 @@ namespace RX_SSDV.Test
     public class ViterbiTest
     {
         public Viterbi viterbi  = new Viterbi();
-        public float[] inputDataArray;
-        public float[] inputArray;
-        public float[] outputArray;
+        public byte[] inputDataArray;
+        public byte[] inputArray;
+        public byte[] outputArray;
         public int outputSize;
         public int sampleCount = 128;
 
@@ -129,8 +129,8 @@ namespace RX_SSDV.Test
 
         public void GenerateInput(int modPtr = 10)
         {
-            inputArray = new float[sampleCount * 2];
-            inputDataArray = new float[sampleCount];
+            inputArray = new byte[sampleCount * 2];
+            inputDataArray = new byte[sampleCount];
             inputBytes = new byte[sampleCount];
             //generatorState = 0;
 
@@ -173,8 +173,8 @@ namespace RX_SSDV.Test
                 int input1 = BinaryUtils.ReadInt(input, 2);
                 int input2 = BinaryUtils.ReadInt(input, 1);
 
-                inputArray[i] = input1;
-                inputArray[i + 1] = input2;
+                inputArray[i] = (byte)input1;
+                inputArray[i + 1] = (byte)input2;
 
                 inputByte <<= 2;
                 inputByte |= (byte)((input1 << 1) | input2);
@@ -222,8 +222,8 @@ namespace RX_SSDV.Test
             //    0,1,1,0,1,0,1,1
             //};
 
-            inputArray = new float[fixedInput.Length * 2];
-            inputDataArray = new float[fixedInput.Length];
+            inputArray = new byte[fixedInput.Length * 2];
+            inputDataArray = new byte[fixedInput.Length];
 
             int ouc = 0;
 
@@ -258,15 +258,15 @@ namespace RX_SSDV.Test
                 int input1 = BinaryUtils.ReadInt(input, 2);
                 int input2 = BinaryUtils.ReadInt(input, 1);
 
-                inputArray[ouc++] = input1;
-                inputArray[ouc++] = input2;
+                inputArray[ouc++] = (byte)input1;
+                inputArray[ouc++] = (byte)input2;
             }
         }
 
         public void GenerateInputRand()
         {
-            inputArray = new float[sampleCount * 2];
-            inputDataArray = new float[sampleCount];
+            inputArray = new byte[sampleCount * 2];
+            inputDataArray = new byte[sampleCount];
             inputBytes = new byte[sampleCount];
             //generatorState = 0;
 
@@ -301,8 +301,8 @@ namespace RX_SSDV.Test
                 int input1 = BinaryUtils.ReadInt(input, 2);
                 int input2 = BinaryUtils.ReadInt(input, 1);
 
-                inputArray[i] = input1;
-                inputArray[i + 1] = input2;
+                inputArray[i] = (byte)input1;
+                inputArray[i + 1] = (byte)input2;
 
                 inputByte <<= 2;
                 inputByte |= (byte)((input1 << 1) | input2);
@@ -329,15 +329,15 @@ namespace RX_SSDV.Test
 
         public void Decode()
         {
-            outputArray = new float[sampleCount * 2];
+            outputArray = new byte[sampleCount * 2];
 
             outputSize = viterbi.Process(inputArray.Length, inputArray, outputArray);
         }
 
         public void DecodeFixed()
         {
-            outputArray = new float[sampleCount * 2];
-            float[] inputArr =
+            outputArray = new byte[sampleCount * 2];
+            byte[] inputArr =
             {
             0,1,0,1,0,1,1,0,
             0,0,0,0,1,0,0,0,
@@ -350,7 +350,7 @@ namespace RX_SSDV.Test
             0,1,0,0,0,0,1,0,
             0,0,1,0,0,1,
             };
-            float[] outputArr = new float[inputArr.Length];
+            byte[] outputArr = new byte[inputArr.Length];
 
             int outSize = viterbi.Process(inputArr.Length, inputArr, outputArr);
 

@@ -1,5 +1,6 @@
 ﻿using NWaves.Utils;
 using RX_SSDV.DSP;
+using RX_SSDV.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,8 +16,8 @@ namespace RX_SSDV.CCSDS
     /// </summary>
     public class RingBufferBinary
     {
-        private float[] buffer;
-        public float[] Buffer => buffer;
+        private byte[] buffer;
+        public byte[] Buffer => buffer;
 
         private int inputIndex = 0;
         private int outputIndex = 0;
@@ -26,7 +27,7 @@ namespace RX_SSDV.CCSDS
         private int bufferSize = 0;
         public int Size => bufferSize;
 
-        public float this[int index]
+        public byte this[int index]
         {
             get
             {
@@ -57,7 +58,7 @@ namespace RX_SSDV.CCSDS
         public RingBufferBinary(int size)
         {
             bufferSize = size;
-            buffer = new float[bufferSize];
+            buffer = new byte[bufferSize];
         }
 
         public void MoveOutputIndex(int delta)
@@ -103,7 +104,7 @@ namespace RX_SSDV.CCSDS
             }
         }
 
-        public void Write(float[] inputArr,int length)
+        public void Write(byte[] inputArr, int length)
         {
             if (length > inputArr.Length)
                 throw new ArgumentException("The 'length' is to big.");
@@ -142,8 +143,8 @@ namespace RX_SSDV.CCSDS
             }
         }
 
-        [Obsolete("Please use RingBufferIQ[index] instead")]
-        public void Read(float[] output, int startIndex = 0, int length = -1)
+        [Obsolete("Please use RingBufferBinary[index] instead")]
+        public void Read(byte[] output, int startIndex = 0, int length = -1)
         {
             if (length == -1)
                 length = output.Length;

@@ -26,12 +26,12 @@ namespace RX_SSDV.Test
             //    0,0,0,1,0,1,1,0
             //};
 
-            float[] inputArr =
+            byte[] inputArr =
             {
                 0,1,0,1,1,0,1,0,0,1,0,1,0,0,1,0,1,0,1,1,1,0,1,0,1,1,1,1,0,1,1,0,1,0
             };
 
-            float[] outputArr = new float[inputArr.Length];
+            byte[] outputArr = new byte[inputArr.Length];
 
             decoder.Process(inputArr.Length, inputArr, outputArr);
 
