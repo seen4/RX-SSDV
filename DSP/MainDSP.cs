@@ -227,6 +227,11 @@ namespace RX_SSDV.DSP
 
                     while(isDrawerOnline)
                     {
+                        if(!SampleSource.IsPlaying)
+                        {
+                            Thread.Sleep(10);
+                            continue;
+                        }
                         if (currentDrawerTick < spectrumPeriod)
                         {
                             currentDrawerTick++;

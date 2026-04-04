@@ -35,8 +35,7 @@ namespace RX_SSDV.Decoder
             dataBuffer = new byte[256];
 
             process = new Process();
-            string ssdvArgs = GenerateSSDVDecoderArgs();
-            startInfo = new ProcessStartInfo(ssdvDecoderPath, $"-d {binaryFilePath} {imageFilePath}");
+            startInfo = new ProcessStartInfo(ssdvDecoderPath, $"-d {binaryFilePath} {imageFilePath}"); // ssdv.exe -d ssdv-packets.bin output-image.jpg
             startInfo.CreateNoWindow = true;
             process.StartInfo = startInfo;
 
@@ -49,12 +48,24 @@ namespace RX_SSDV.Decoder
         public void ProcessPacket(byte[] packet)
         {
             packet.FastCopyTo(dataBuffer, packet.Length, 0, 1);
+
             if (packet[0] == 0x03)
             {
-                if (packet[1] == 0x22)
+                if (packet[1] == 0x22) // SSDV packet
                 {
                     Logger.CLogInfo("[Packet RX][ASRTU-1]SSDV packet received.");
+
+                    // Replace with standard SSDV header
                     ReplaceSSDVHeader();
+
+                    // If we found the packet that its id equals 0x00, it must be the first packet.
+                    if (dataBuffer[8] == 0x00)
+                    {
+                        byteOutput.ClearFile();
+                        //byteOutput.fileStream.Seek(0, SeekOrigin.Begin);
+                    }
+                    
+                    // Calculate CRC32
                     uint crc = CalcCRC32(dataBuffer);
 
                     // crc uint => 4 bytes, write to buffer
@@ -69,11 +80,11 @@ namespace RX_SSDV.Decoder
                             crcByte = 0;
                         }
                     }
-
-                    byteOutput.WriteBytes(dataBuffer);
+                    
+                    byteOutput.WriteBytes(dataBuffer); // Write file
                     DecodeSSDV();
                 }
-                else if (packet[1] == 0x24)
+                else if (packet[1] == 0x24) //Telemetry packet
                 {
                     Logger.CLogInfo("[Packet RX][ASRTU-1]Telemetry packet received.");
                 }
@@ -133,18 +144,6 @@ namespace RX_SSDV.Decoder
             }
             StartDecoderProcess();
         }
-
-        private string GenerateSSDVDecoderArgs(params string[] args)
-        {
-            string s = "";
-            foreach (string arg in args)
-            {
-                s = s + arg + " ";
-            }
-            s = s.Trim();
-            return s;
-        }
-
 
         public bool StartDecoderProcess()
         {

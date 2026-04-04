@@ -14,9 +14,7 @@ namespace RX_SSDV.CCSDS
     {
         //Symbol sync
         public const uint CCSDS_ASM = 0x1ACFFC1D; //0b_0001_1010_1100_1111_1111_1100_0001_1101 1ACFFC1D | inverse 0b_1011_1000_0011_1111_1111_0011_0101_1000 B83FF358
-        //public const uint ssdvSyncSymbol = 0x0322; //0b_0011_0010_0010
         public const int syncwordSize = 32;
-        private bool isSynced = false;
 
         private int packetSize;
         private byte[] packetBits;
@@ -66,6 +64,7 @@ namespace RX_SSDV.CCSDS
             {
                 processedCount++;
 
+                // Search ASM
                 uint window = 0;
                 for (int j = 0; j < syncwordSize; j++)
                 {
@@ -75,7 +74,7 @@ namespace RX_SSDV.CCSDS
 
                 if ((BinaryUtils.HammingDst(CCSDS_ASM, window) <= 2 || BinaryUtils.HammingDst(CCSDS_ASM, ~window) <= 2) && syncwordSize == 32)
                 {
-                    Logger.CLogInfo($"[FrameSync-Debug]Synced ASM at {i}, {window.ToString("B32")}");
+                    //Logger.CLogInfo($"[FrameSync-Debug]Synced ASM at {i}, {window.ToString("B32")}");
 
                     // Output bits(Primary)
                     int packetIndex = i + syncwordSize;
@@ -94,10 +93,6 @@ namespace RX_SSDV.CCSDS
                     CompleteProcess(count);
                     return count;
                 }
-                //else if ((ssdvSyncSymbol == window || ssdvSyncSymbol == ~window) && syncSymbolSize == 12)
-                //{
-                //    Logger.CLogInfo($"[FrameSync-Debug]Synced SSDV at {i}");
-                //}
             }
 
             CompleteProcess(processedCount);
@@ -112,12 +107,13 @@ namespace RX_SSDV.CCSDS
             }
         }
 
+        /// <summary>
+        /// Send packet bits to transport decoder
+        /// </summary>
         private void SendBits()
         {
-            //TODO: data process
-            //The bit data of current packet was stored in 'packetBits' array
+            // The bit data of current packet was stored in the 'packetBits' array
             Logger.CLogInfo($"[Packet RX] Packet received, length = { packetSize }bits({ packetSize / 8 }bytes)");
-            //Logger.CPrintArr(packetBits, packetBits.Length, "Packet data");
             onPacketProcess(packetBits);
         }
     }

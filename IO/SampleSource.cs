@@ -41,6 +41,9 @@ namespace RX_SSDV.IO
         private static bool directRead = false;
         private static bool directReadPause = false;
 
+        private static bool isPlaying = false;
+        public static bool IsPlaying => isPlaying;
+
         private static bool isSourceAvalible = false;
 
         public const int WAV_BUFFER_SIZE = 2048;
@@ -49,9 +52,62 @@ namespace RX_SSDV.IO
         public static Action<float[], float[]> onDataAvalible = (samplesReal, samplesImag) => { /*UpdateUI();*/ };
         public static Action<WaveFormat> onSourceChange = (waveFmt) => { };
 
-        public static Action onStart = () => { };
-        public static Action onPause = () => { };
-        public static Action onStop = () => { };
+        public static Action onStart = () => 
+        { 
+            isPlaying = true;
+            isSourceAvalible = true;
+            Logger.CLogInfo("[SampleSource]Playing"); 
+        };
+        public static Action onPause = () => 
+        { 
+            isPlaying = false;
+            Logger.CLogInfo("[SampleSource]Paused");
+        };
+        public static Action onStop = () => 
+        { 
+            isPlaying = false;
+            isSourceAvalible = false;
+            Logger.CLogInfo("[SampleSource]Stopped");
+        };
+
+        /// <summary>
+        /// Check if file exists
+        /// </summary>
+        /// <param name="showMessage">Shows error window if true</param>
+        /// <returns>Returns true if the file exists</returns>
+        public static bool CheckPathAvalible(bool showMessage = false)
+        {
+            bool isPathAvalible = File.Exists(audioFilePath);
+            if (!isPathAvalible && showMessage)
+            {
+                MessageBox.Show("File not exist.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            return isPathAvalible;
+        }
+
+        #region General
+        //Init sample sources
+        public static void InitSource()
+        {
+            wavFileReader = new WaveFileReader(audioFilePath);
+
+            if (sourceType == DataSourceType.BasebandFile)
+            {
+                sampleAggregator = new SampleAggregator(wavFileReader.ToSampleProvider(), WAV_BUFFER_SIZE);
+                sampleAggregator.processSamples += onDataAvalible;
+            }
+
+            //capture.DataAvailable 
+        }
+
+        public static void ReleaseSource()
+        {
+            if (wavFileReader != null)
+            {
+                wavFileReader.Close();
+                wavFileReader.Dispose();
+            }
+        }
 
         public static void Play()
         {
@@ -61,56 +117,56 @@ namespace RX_SSDV.IO
                 return;
             }
 
-            isSourceAvalible = true;
-
             if (sourceType == DataSourceType.BasebandFile)
                 ReadSampleDirect();
             else if (sourceType == DataSourceType.SoundCard)
                 StartSoundCardRecord();
 
-            Logger.LogInfo("[SampleSource]Playing");
             //PlayAudio();
-
             onStart();
         }
 
         public static void Pause()
         {
             if (sourceType == DataSourceType.BasebandFile)
-                PauseDirectRead();
+                PauseDirectReader();
             else if (sourceType == DataSourceType.SoundCard)
                 PauseSoundCardRecord();
 
-            Logger.LogInfo("[SampleSource]Paused");
             //PauseAudio();
-
             onPause();
         }
 
         public static void Stop()
         {
             if (sourceType == DataSourceType.BasebandFile)
-                StopDirectRead();
+                StopDirectReader();
 
-            isSourceAvalible = false;
-            Logger.LogInfo("[SampleSource]Stopped");
             //StopAudio();
-
             onStop();
         }
+        #endregion
 
-        public static void StartSoundCardRecord()
+        #region Soundcard sample reader
+        private static void StartSoundCardRecord()
         {
             capture.StartRecording();
         }
 
-        public static void PauseSoundCardRecord()
+        private static void PauseSoundCardRecord()
         {
             capture.StopRecording();
         }
 
-        //read from baseband file
-        public static void ReadSampleDirect()
+        public static void ProcessCaptureSamples(float[] inputSamples)
+        {
+            //recordBuffer.Write(inputSamples, );
+        }
+        #endregion
+
+        #region Baseband sample reader
+        //read from baseband file (start direct reader)
+        private static void ReadSampleDirect()
         {
             if (!directRead)
             {
@@ -130,6 +186,14 @@ namespace RX_SSDV.IO
                         {
                             Array.Clear(buffer, 0, bufferSize);
                             sampleAggregator.Read(buffer, 0, bufferSize);
+
+                            if (!wavFileReader.HasData(1))
+                            {
+                                //Stop wav file reader manually
+                                StopDirectReader();
+                                onStop();
+                            }
+
                             Thread.Sleep(readPeriod);
                         }
                         else
@@ -148,59 +212,22 @@ namespace RX_SSDV.IO
         }
 
         //pause
-        public static void PauseDirectRead()
+        private static void PauseDirectReader()
         {
             directReadPause = true;
         }
 
         //stop
-        public static void StopDirectRead()
+        private static void StopDirectReader()
         {
             directRead = false;
             directReadPause = false;
-        }
 
-        //Init sample sources
-        public static void InitSource()
-        {
-            wavFileReader = new WaveFileReader(audioFilePath);
-            sampleAggregator = new SampleAggregator(wavFileReader.ToSampleProvider(), WAV_BUFFER_SIZE);
-            sampleAggregator.processSamples += onDataAvalible;
-            
-            //capture.DataAvailable 
+            ReleaseSource();
         }
+        #endregion
 
-        public static void ProcessCaptureSamples(float[] inputSamples)
-        {
-            //recordBuffer.Write(inputSamples, );
-        }
-
-        //check output device
-        private static void EnsureDeviceCreated()
-        {
-            if (playbackDevice == null)
-            {
-                CreateDevice();
-            }
-        }
-
-        //create output device
-        private static void CreateDevice()
-        {
-            playbackDevice = new WaveOut { DesiredLatency = 200 };
-        }
-
-        //check file path
-        public static bool CheckPathAvalible(bool showMessage = false)
-        {
-            bool isPathAvalible = File.Exists(audioFilePath);
-            if (!isPathAvalible && showMessage)
-            {
-                MessageBox.Show("File not exist.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            return isPathAvalible;
-        }
-
+        #region Audio file reader
         //play with audio
         public static void PlayAudio()
         {
@@ -228,7 +255,7 @@ namespace RX_SSDV.IO
             {
                 playbackDevice.Pause();
             }
-            catch(Exception)
+            catch (Exception)
             {
                 MessageBox.Show("No audio loaded.");
             }
@@ -242,11 +269,29 @@ namespace RX_SSDV.IO
                 playbackDevice.Dispose();
                 audioPathEdited = true; //if user click 'play' button again, load audio file.
             }
-            catch(Exception)
+            catch (Exception)
             {
                 MessageBox.Show("No audio loaded");
             }
         }
+        #endregion
+
+        #region Audio device
+        //check output device
+        private static void EnsureDeviceCreated()
+        {
+            if (playbackDevice == null)
+            {
+                CreateDevice();
+            }
+        }
+
+        //create output device
+        private static void CreateDevice()
+        {
+            playbackDevice = new WaveOut { DesiredLatency = 200 };
+        }
+        #endregion
 
         /// <summary>
         /// Update player UI

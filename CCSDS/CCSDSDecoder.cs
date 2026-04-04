@@ -117,12 +117,10 @@ namespace RX_SSDV.CCSDS
 
         public void ProcessPacket(byte[] bits)
         {
-            //bits.FastCopyTo(packetBitBuffer, bits.Length);
-
             int bufferInputIndex = 0;
             for (int i = 0; i < bits.Length; i += 8) {
 
-                //Pack bytes
+                // Pack bytes
                 byte inputByte = 0;
                 for (int j = 0; j < 8; j++)
                 {
@@ -131,13 +129,16 @@ namespace RX_SSDV.CCSDS
                     inputByte |= (byte)(inputBit & 1);
                 }
 
+                // Descrambling
                 if (useDescrambling) inputByte ^= DecodeTabs.descramblingSequence[bufferInputIndex%255];
+
                 packetByteBuffer[bufferInputIndex++] = inputByte;
 
-                if (bufferInputIndex - 1 != 0 && (bufferInputIndex - 1) % 16 == 0) Logger.CLog("\n");
-                Logger.CLog(inputByte.ToString("X2") + " ");
+                //Debug log
+                //if (bufferInputIndex - 1 != 0 && (bufferInputIndex - 1) % 16 == 0) Logger.CLog("\n");
+                //Logger.CLog(inputByte.ToString("X2") + " ");
             }
-            Logger.CLog("\n");
+            //Logger.CLog("\n");
 
             decoder.ProcessPacket(packetByteBuffer);
         }
