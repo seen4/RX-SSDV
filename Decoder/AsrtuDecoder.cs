@@ -1,5 +1,6 @@
 ﻿using RX_SSDV.Base;
 using RX_SSDV.IO;
+using RX_SSDV.UI;
 using RX_SSDV.Utils;
 using System;
 using System.Collections.Generic;
@@ -8,6 +9,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Timers;
+using Timer = System.Timers.Timer;
 
 namespace RX_SSDV.Decoder
 {
@@ -29,6 +32,8 @@ namespace RX_SSDV.Decoder
             0x55, 0x66, 0xDA, 0x4B, 0xF8, 0xEF, 0x00
         };
 
+        Timer? decoderTimer;
+
         public AsrtuDecoder()
         {
             byteOutput = new ByteOutput(binaryFilePath);
@@ -39,10 +44,33 @@ namespace RX_SSDV.Decoder
             startInfo.CreateNoWindow = true;
             process.StartInfo = startInfo;
 
-            SampleSource.onStop += () => byteOutput.CloseStream();
-            SampleSource.onStart += () => byteOutput.OpenStream();
+            SampleSource.onStop += () => { byteOutput.CloseStream(); };
+            SampleSource.onStart += () => { byteOutput.OpenStream(); CheckOutputFiles(); };
+
+            decoderTimer = new Timer(1000);
+            decoderTimer.Elapsed += (object? e, ElapsedEventArgs args) => { 
+                decoderTimer.Close(); 
+                decoderTimer.Dispose(); 
+                decoderTimer = null; 
+                DecodeSSDV();
+
+                Logger.LogInfo("[ASTRU-1] Processing SSDV packets...");
+            };
 
             CheckOutputFiles();
+        }
+
+        private void ResetTimer()
+        {
+            decoderTimer = new Timer(1000);
+            decoderTimer.Elapsed += (object? e, ElapsedEventArgs args) => { 
+                decoderTimer.Close(); 
+                decoderTimer.Dispose(); 
+                decoderTimer = null; 
+                DecodeSSDV();
+
+                Logger.LogInfo("[ASTRU-1] Processing SSDV packets...");
+            };
         }
 
         public void ProcessPacket(byte[] packet)
@@ -53,7 +81,18 @@ namespace RX_SSDV.Decoder
             {
                 if (packet[1] == 0x22) // SSDV packet
                 {
-                    Logger.CLogInfo("[Packet RX][ASRTU-1]SSDV packet received.");
+                    Logger.CLogInfo("[Packet RX][ASRTU-1] SSDV packet received.");
+
+                    // Restart timer
+                    if (decoderTimer == null)
+                    {
+                        ResetTimer();
+                    }
+                    else
+                    {
+                        decoderTimer.Stop();
+                        decoderTimer.Start();
+                    }
 
                     // Replace with standard SSDV header
                     ReplaceSSDVHeader();
@@ -62,7 +101,7 @@ namespace RX_SSDV.Decoder
                     if (dataBuffer[8] == 0x00)
                     {
                         byteOutput.ClearFile();
-                        //byteOutput.fileStream.Seek(0, SeekOrigin.Begin);
+                        PostPacket(PacketData.PacketType.Image);
                     }
                     
                     // Calculate CRC32
@@ -82,13 +121,39 @@ namespace RX_SSDV.Decoder
                     }
                     
                     byteOutput.WriteBytes(dataBuffer); // Write file
-                    DecodeSSDV();
+                    //DecodeSSDV();
                 }
                 else if (packet[1] == 0x24) //Telemetry packet
                 {
                     Logger.CLogInfo("[Packet RX][ASRTU-1]Telemetry packet received.");
+                    PostPacket(PacketData.PacketType.Telemetry);
                 }
             }
+        }
+
+        public void PostPacket(PacketData.PacketType type)
+        {
+            string typeStr = "NULL";
+            string additionalMsg = "-";
+            PacketData data = new UndefinedPacket(type);
+            switch (type)
+            {
+                case PacketData.PacketType.Unknown:
+                    typeStr = "Unknown";
+                    break;
+                case PacketData.PacketType.Telemetry:
+                    typeStr = "Telemetry";
+                    data = new TelemPacket(type);
+                    break;
+                case PacketData.PacketType.Image:
+                    typeStr = "SSDV Image";
+                    additionalMsg = "BG6LQV";
+                    data = new ImagePacket(type, imageFilePath);
+                    break;
+            }
+
+            PacketInfo packetInfo = new PacketInfo("ASRTU-1(AO-123)", typeStr, additionalMsg, data);
+            SatDataUI.RegisterPacket(packetInfo);
         }
 
         private uint CalcCRC32(byte[] buffer)
@@ -127,12 +192,22 @@ namespace RX_SSDV.Decoder
 
         private void CheckOutputFiles()
         {
-            if(!Directory.Exists(resDirPath))
+            if (!Directory.Exists(resDirPath))
                 Directory.CreateDirectory(resDirPath);
             if(!File.Exists(binaryFilePath))
                 File.Create(binaryFilePath);
             if(!File.Exists(imageFilePath))
                 File.Create(imageFilePath);
+
+            // also, we need to clear the output image file to make sure the ssdv.exe can works properly
+            using(FileStream stream = new FileStream(imageFilePath, FileMode.Create, FileAccess.ReadWrite))
+            {
+                stream.Seek(0, SeekOrigin.Begin);
+                stream.SetLength(0);
+                stream.Flush();
+                stream.Close();
+                stream.Dispose();
+            }
         }
 
         private void DecodeSSDV()
@@ -148,10 +223,18 @@ namespace RX_SSDV.Decoder
         public bool StartDecoderProcess()
         {
             process.Start();
-            //Task.Run(() => {
-            //    process.WaitForExit();
-            //    Logger.CLogInfo("[ssdv.exe]Standard output:\n" + process.StandardOutput.ReadToEnd());
-            //});
+
+            Task.Run(() =>
+            {
+                process.WaitForExit();
+                process.Close();
+
+                if (SatDataUI.currentImagePacket != null && SatDataUI.currentImagePacket.imagePath == imageFilePath)
+                {
+                    SatDataUI.UpdateImage(); //Update UI
+                }
+            });
+
             return true;
         }
     }

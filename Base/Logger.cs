@@ -96,8 +96,11 @@ namespace RX_SSDV.Base
             if (Instance.logDisplay == null)
                 return;
 
-            Instance.logText = Instance.logTextBuilder.ToString();
-            Instance.logDisplay.Text = Instance.logText;
+            MainWindow.Instance.Dispatcher.Invoke(() =>
+            {
+                Instance.logText = Instance.logTextBuilder.ToString();
+                Instance.logDisplay.Text = Instance.logText;
+            });
         }
 
         public static void ClearLog()

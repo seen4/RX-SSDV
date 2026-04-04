@@ -30,7 +30,7 @@ namespace RX_SSDV.IO
 
         public static bool IsSourceAvalible => isSourceAvalible;
 
-        private static WaveFileReader wavFileReader;
+        private static WaveFileReader? wavFileReader;
         private static SampleAggregator sampleAggregator;
 
         //private static WaveOutEvent waveOutEvent = new WaveOutEvent();
@@ -106,6 +106,7 @@ namespace RX_SSDV.IO
             {
                 wavFileReader.Close();
                 wavFileReader.Dispose();
+                wavFileReader = null;
             }
         }
 
@@ -184,6 +185,7 @@ namespace RX_SSDV.IO
                     {
                         if (!directReadPause)
                         {
+
                             Array.Clear(buffer, 0, bufferSize);
                             sampleAggregator.Read(buffer, 0, bufferSize);
 
@@ -220,6 +222,13 @@ namespace RX_SSDV.IO
         //stop
         private static void StopDirectReader()
         {
+            if(!directReadPause)
+            {
+                directReadPause = true;
+                Task.Run(() => { Thread.Sleep(100);  StopDirectReader(); });
+                return;
+            }
+
             directRead = false;
             directReadPause = false;
 
@@ -317,6 +326,11 @@ namespace RX_SSDV.IO
 
         public static string GetFormatedTimeString()
         {
+            string timeStr;
+
+            if (wavFileReader == null)
+                return "null";
+
             TimeSpan totalTime = wavFileReader.TotalTime;
             int minTotal = totalTime.Minutes;
             int secTotal = totalTime.Seconds;
@@ -324,7 +338,7 @@ namespace RX_SSDV.IO
             int minCurrent = currentTime.Minutes;
             int secCurrent = currentTime.Seconds;
 
-            string timeStr = $"{minCurrent}:{secCurrent} / {minTotal}:{secTotal}";
+            timeStr = $"{minCurrent}:{secCurrent} / {minTotal}:{secTotal}";
             return timeStr;
         }
     }

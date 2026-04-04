@@ -106,8 +106,27 @@
                     </ScrollViewer>
                 </Grid>
             </TabItem>
-            <TabItem Header="{DynamicResource MainWindow_TabProcess}" d:Header="Process">
+            <TabItem Header="{DynamicResource MainWindow_TabProcess}" d:Header="Data">
+                <Grid Margin="5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="350"/>
+                        <ColumnDefinition Width="600*"/>
+                    </Grid.ColumnDefinitions>
 
+                    <ListView Grid.Column="0" Name="satDataList" SelectionChanged="satDataList_SelectionChanged">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Satellite" Width="120px" DisplayMemberBinding="{Binding SatelliteName}"/>
+                                <GridViewColumn Header="Packet Type" Width="100px" DisplayMemberBinding="{Binding PacketTypeStr}"/>
+                                <GridViewColumn Header="Message" Width="130px" DisplayMemberBinding="{Binding Msg}"/>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Name="packetImageView" Visibility="Collapsed">
+                        <Image Width="400px" Name="packetImage"/>
+                        <Label HorizontalAlignment="Center" Name="packetImageProperty" Content="HOW DID YOU SEE THIS?"/>
+                    </StackPanel>
+                </Grid>
             </TabItem>
             <TabItem Header="{DynamicResource MainWindow_TabSettings}" d:Header="Setting">
 
