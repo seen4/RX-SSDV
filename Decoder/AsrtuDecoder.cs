@@ -40,18 +40,36 @@ namespace RX_SSDV.Decoder
             startInfo.CreateNoWindow = true;
             process.StartInfo = startInfo;
 
+            SampleSource.onStop += () => byteOutput.CloseStream();
+            SampleSource.onStart += () => byteOutput.OpenStream();
+
             CheckOutputFiles();
         }
 
         public void ProcessPacket(byte[] packet)
         {
-            packet.FastCopyTo(dataBuffer, packet.Length);
+            packet.FastCopyTo(dataBuffer, packet.Length, 0, 1);
             if (packet[0] == 0x03)
             {
                 if (packet[1] == 0x22)
                 {
                     Logger.CLogInfo("[Packet RX][ASRTU-1]SSDV packet received.");
                     ReplaceSSDVHeader();
+                    uint crc = CalcCRC32(dataBuffer);
+
+                    // crc uint => 4 bytes, write to buffer
+                    byte crcByte = 0;
+                    for(int i = 0; i < 32; i++)
+                    {
+                        crcByte <<= 1;
+                        crcByte |= (byte)((crc >> (31 - i)) & 1);
+                        if((i + 1) % 8 == 0)
+                        {
+                            dataBuffer[219 + (i + 1) / 8] = crcByte;
+                            crcByte = 0;
+                        }
+                    }
+
                     byteOutput.WriteBytes(dataBuffer);
                     DecodeSSDV();
                 }
@@ -60,6 +78,32 @@ namespace RX_SSDV.Decoder
                     Logger.CLogInfo("[Packet RX][ASRTU-1]Telemetry packet received.");
                 }
             }
+        }
+
+        private uint CalcCRC32(byte[] buffer)
+        {
+            uint result = 0xFFFFFFFF;
+            //忽略开头的0x55
+            for (int i = 1; i < 220; i++)
+            {
+                result ^= (uint)buffer[i] & 0xFF;
+
+                for (int j = 0; j < 8; j++)
+                {
+                    if ((result & 0x1) == 1)
+                    {
+                        result >>= 1;
+                        result &= 0x7FFFFFFF;//清除最高位
+                        result ^= 0xEDB88320;
+                    }
+                    else
+                    {
+                        result >>= 1;
+                        result &= 0x7FFFFFFF;//清除最高位
+                    }
+                }
+            }
+            return ~result;
         }
 
         private void ReplaceSSDVHeader()
