@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:RX_SSDV"
         mc:Ignorable="d"
-        Title="RX-SSDV" Height="800" Width="1200">
+        Title="RX-SSDV" 
+        Icon="/App_Icon.ico" Height="800" Width="1200">
     <Grid>
         <TabControl>
             <TabItem Header="{DynamicResource MainWindow_TabSpectrum}" d:Header="Spectrum">

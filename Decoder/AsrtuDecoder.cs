@@ -24,7 +24,7 @@ namespace RX_SSDV.Decoder
         public string imageFilePath = $"{AppDomain.CurrentDomain.BaseDirectory}outputs/output-image.jpg";
         public readonly string ssdvDecoderPath = $"{AppDomain.CurrentDomain.BaseDirectory}ssdv.exe";
 
-        public const int RECEIVE_TIMEOUT_BASEBAND = 1000;
+        public const int RECEIVE_TIMEOUT_BASEBAND = 2000;
         public const int RECEIVE_TIMEOUT_DEFAULT = 4000;
 
         Process process;
@@ -80,10 +80,10 @@ namespace RX_SSDV.Decoder
                 decoderTimer.Close();
                 decoderTimer.Dispose();
                 decoderTimer = null;
+
+                Logger.LogInfo("[Packet RX][ASTRU-1] Processing SSDV packets...");
                 DecodeSSDV();
             }
-
-            Logger.LogInfo("[Packet RX][ASTRU-1] Processing SSDV packets...");
         }
 
         public void ProcessPacket(byte[] packet)
@@ -182,7 +182,7 @@ namespace RX_SSDV.Decoder
                     break;
                 case PacketData.PacketType.Image:
                     typeStr = "SSDV Image";
-                    additionalMsg = "BG6LQV";
+                    additionalMsg = "BY2HIT";
                     data = new ImagePacket(type, imageFilePath);
                     break;
             }
@@ -235,7 +235,7 @@ namespace RX_SSDV.Decoder
         private void SetupDecoder()
         {
             string perfix = DateTime.Now.ToString().Replace(" ", "").Replace(":", "").Replace("/", "");
-            string filename = $"output-image-{perfix}.jpg";
+            string filename = $"output-image_{perfix}.jpg";
             imageFilePath = $"{AppDomain.CurrentDomain.BaseDirectory}outputs/{filename}";
 
             process = new Process();
