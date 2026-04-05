@@ -1,9 +1,23 @@
-# RX-SSDV
+# RX-SSDV (en-us)
 A simple baseband SSDV decoder based on `WPF`.<br>
 Decoder used: [SSDV](https://github.com/fsphil/ssdv)<br>
 **Note**: This project is still under development, so there may be a large number of bugs and the features are not very complete.
 
-### Supprted satellites
+## How to use
+### Use baseband source
+*Note: Limited function*
+1. Set `Sample Source` to `Baseband File`
+2. Click `Browse` button to select target file.
+3. Toggle `Enable Process` checkbox.
+4. Click `Play` button and wait for the decoding process to complete.
+
+### Use sound card source  
+1. Set `Sample Source` to `Sound Card`.
+2. Click `Play` button to start recoding.
+3. Play the audio *(Raw)* and wait for the decoding process to complete.
+
+## Supported modes
+### Supported satellites
 - ASRTU-1(AO-123) - BPSK 9600bps & CCSDS Concatenated (SSDV)
 
 ### Supported modulations
