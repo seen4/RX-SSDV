@@ -34,9 +34,13 @@ namespace RX_SSDV.IO
         private static SampleAggregator sampleAggregator;
 
         //private static WaveOutEvent waveOutEvent = new WaveOutEvent();
-        public static WasapiLoopbackCapture capture = new WasapiLoopbackCapture();
-
         private static IWavePlayer playbackDevice;
+
+        public static WasapiLoopbackCapture capture = new WasapiLoopbackCapture();
+        private static float[] soundcardOutputBufferI = new float[WAV_BUFFER_SIZE];
+        private static float[] soundcardOutputBufferQ = new float[WAV_BUFFER_SIZE];
+        private static byte channelFlag = 0;
+        private static int channelBufferIndex = 0;
 
         private static bool directRead = false;
         private static bool directReadPause = false;
@@ -47,7 +51,6 @@ namespace RX_SSDV.IO
         private static bool isSourceAvalible = false;
 
         public const int WAV_BUFFER_SIZE = 2048;
-        public static RingBufferIQ recordBuffer;
 
         public static Action<float[], float[]> onDataAvalible = (samplesReal, samplesImag) => { /*UpdateUI();*/ };
         public static Action<WaveFormat> onSourceChange = (waveFmt) => { };
@@ -89,15 +92,25 @@ namespace RX_SSDV.IO
         //Init sample sources
         public static void InitSource()
         {
-            wavFileReader = new WaveFileReader(audioFilePath);
-
             if (sourceType == DataSourceType.BasebandFile)
             {
+                wavFileReader = new WaveFileReader(audioFilePath);
                 sampleAggregator = new SampleAggregator(wavFileReader.ToSampleProvider(), WAV_BUFFER_SIZE);
                 sampleAggregator.processSamples += onDataAvalible;
             }
+            else if (sourceType == DataSourceType.SoundCard)
+            {
+                Logger.CLogInfo(capture.WaveFormat.Channels.ToString());
+                capture.DataAvailable += (object? sender, WaveInEventArgs e) =>
+                {
+                    //float[] samples = Enumerable
+                    //    .Range(0, e.BytesRecorded / 4)
+                    //    .Select(i => BitConverter.ToSingle(e.Buffer, i * 4))
+                    //    .ToArray();
 
-            //capture.DataAvailable 
+                    ProcessCaptureSamples(e);
+                };
+            }
         }
 
         public static void ReleaseSource()
@@ -112,14 +125,15 @@ namespace RX_SSDV.IO
 
         public static void Play()
         {
-            bool isPathAvalible = CheckPathAvalible(true);
-            if (!isPathAvalible)
-            {
-                return;
-            }
-
             if (sourceType == DataSourceType.BasebandFile)
+            {
+                bool isPathAvalible = CheckPathAvalible(true);
+                if (!isPathAvalible)
+                {
+                    return;
+                }
                 ReadSampleDirect();
+            }
             else if (sourceType == DataSourceType.SoundCard)
                 StartSoundCardRecord();
 
@@ -151,7 +165,9 @@ namespace RX_SSDV.IO
         #region Soundcard sample reader
         private static void StartSoundCardRecord()
         {
+            InitSource();
             capture.StartRecording();
+            onSourceChange(capture.WaveFormat);
         }
 
         private static void PauseSoundCardRecord()
@@ -159,9 +175,30 @@ namespace RX_SSDV.IO
             capture.StopRecording();
         }
 
-        public static void ProcessCaptureSamples(float[] inputSamples)
+        public static void ProcessCaptureSamples(WaveInEventArgs e)
         {
-            //recordBuffer.Write(inputSamples, );
+            // Buffer bytes => IQ buffers
+            for (int i = 0; i < e.BytesRecorded / 4; i++)
+            {
+                float sample = BitConverter.ToSingle(e.Buffer, i * 4);
+                if (channelFlag == 0)
+                    soundcardOutputBufferI[channelBufferIndex] = sample;
+                else if (channelFlag == 1)
+                    soundcardOutputBufferQ[channelBufferIndex] = sample;
+
+                channelFlag += 1;
+                if (channelFlag == capture.WaveFormat.Channels)
+                {
+                    channelBufferIndex++;
+                    channelFlag = 0;
+
+                    if(channelBufferIndex == WAV_BUFFER_SIZE)
+                    {
+                        channelBufferIndex = 0;
+                        onDataAvalible(soundcardOutputBufferI, soundcardOutputBufferQ);
+                    }
+                }
+            }
         }
         #endregion
 

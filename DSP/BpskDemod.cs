@@ -103,10 +103,10 @@ namespace RX_SSDV.DSP
         public void InitModulesDefault()
         {
             freqShift = new FreqShift(48000, 0);
-            costasLoop = new CostasLoop(0.05f, 10);
+            costasLoop = new CostasLoop(0.1f, 10);
             equalizer = LMS_DD_Equalizer.BuildEqualizer(0.05f, 1, 1);
             clockRecovery = new ClockRecoveryBlock_MM(0.5f, 0.175f, MainDSP.SamplePerSymbol, 0.75f * 0.75f, 0.05f);
-            agc = new FeedforwardAGC(1, 1);
+            agc = new FeedforwardAGC(1, 0.25f);
             float[] rrcTaps = FilterUtils.RootRaisedCosine(16, MainDSP.GetSPS(), 1 , 0.35f, 11 * MainDSP.SamplePerSymbol);
             rrcFilter = new ComplexFirFilter(rrcTaps, new float[rrcTaps.Length]);
         }
@@ -142,12 +142,11 @@ namespace RX_SSDV.DSP
             CheckProcessOutputArr(realSignal.Length);
             CheckBlocks();
 
-            
             freqShift.Process(realSignal.Length, realSignal, imagSignal, outputBufferI, outputBufferQ);
             ConfigureOutput();
 
-            //int agcOutputSize = agc.Process(realSignal.Length, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
-            //ConfigureOutput();
+            int agcOutputSize = agc.Process(realSignal.Length, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
+            ConfigureOutput();
 
             int costasOutputSize = costasLoop.Process(realSignal.Length, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
             ConfigureOutput();

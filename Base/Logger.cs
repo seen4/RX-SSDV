@@ -23,40 +23,44 @@ namespace RX_SSDV.Base
         }
 
         public TextBox logDisplay;
+        public TextBlock lastLogDisplay;
 
         private StringBuilder logTextBuilder;
         public string logText;
+        public string lastLogText;
 
         public Logger()
         {
             logTextBuilder = new StringBuilder();
         }
 
-        public Logger(TextBox logDisplay)
+        public Logger(TextBox logDisplay, TextBlock lastLogDisplay)
         {
             this.logDisplay = logDisplay;
+            this.lastLogDisplay = lastLogDisplay;
             logTextBuilder = new StringBuilder();
         }
 
         public static void Log(string message)
         {
             Instance.logTextBuilder.Append(message);
+            Instance.lastLogText = message;
             UpdateLogText();
         }
 
         public static void LogInfo(string message)
         {
-            Log($"[I] {message}\n");
+            Log($"[Info]{message}\n");
         }
 
         public static void LogWarn(string message)
         {
-            Log($"[W] {message}\n");
+            Log($"[Warn]{message}\n");
         }
 
         public static void LogErr(string message)
         {
-            Log($"[E] {message}\n");
+            Log($"[Error]{message}\n");
         }
 
         public static void CLog(string message)
@@ -96,10 +100,11 @@ namespace RX_SSDV.Base
             if (Instance.logDisplay == null)
                 return;
 
+            Instance.logText = Instance.logTextBuilder.ToString();
             MainWindow.Instance.Dispatcher.Invoke(() =>
             {
-                Instance.logText = Instance.logTextBuilder.ToString();
                 Instance.logDisplay.Text = Instance.logText;
+                Instance.lastLogDisplay.Text = Instance.lastLogText;
             });
         }
 

@@ -1,9 +1,11 @@
 ﻿using RX_SSDV.Base;
 using RX_SSDV.CCSDS;
+using RX_SSDV.Decoder;
 using RX_SSDV.DSP;
 using RX_SSDV.Graphic;
 using RX_SSDV.IO;
 using RX_SSDV.Test;
+using RX_SSDV.UI;
 using RX_SSDV.Utils;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -43,6 +45,9 @@ namespace RX_SSDV
         public Action onSizeChange;
 
         private MainDSP mainDSP;
+        private SatDataUI satData;
+
+        private bool isComponentsInited = false;
 
         public MainWindow()
         {
@@ -50,10 +55,12 @@ namespace RX_SSDV
             SizeChanged += OnWindowsSizeChange;
 
             LogLogo();
-            Logger.Log("[I] Initializing components...");
+            Logger.Log("[Info] Initializing components...");
             InitializeComponent();
+            isComponentsInited = true;
             Logger.Log(" done\n");
             Logger.Instance.logDisplay = logText;
+            Logger.Instance.lastLogDisplay = lastLogLabel;
 
             Init();
 
@@ -67,11 +74,12 @@ namespace RX_SSDV
 
         private void Init()
         {
-            Logger.Log("[I] Starting up...");
+            Logger.Log("[Info] Starting up...");
             Settings.ApplySettings(); //init language
 
             InitDrawer();
-            InitDSP();
+            InitDSP(); 
+            InitUI();
             Logger.Log(" done\n");
         }
 
@@ -79,6 +87,11 @@ namespace RX_SSDV
         {
             mainDSP = new MainDSP(spectrumDrawer, constellationDrawer, constellationDrawerProcessed);
             SetDSPArguments();
+        }
+
+        private void InitUI()
+        {
+            satData = new SatDataUI(this);
         }
 
         private void InitDrawer()
@@ -121,8 +134,26 @@ namespace RX_SSDV
                     SampleSource.sourceType = SampleSource.DataSourceType.BasebandFile;
                     break;
                 case 1:
-                    SampleSource.sourceType = SampleSource.DataSourceType.RTLSDR;
+                    SampleSource.sourceType = SampleSource.DataSourceType.SoundCard;
                     break;
+            }
+
+            if (!isComponentsInited)
+                return;
+
+            if(SampleSource.sourceType == SampleSource.DataSourceType.BasebandFile)
+            {
+                audioPathInput.Visibility = Visibility.Visible;
+                browseAudioFileBtn.Visibility = Visibility.Visible;
+                stopAudioBtn.Visibility = Visibility.Visible;
+                readPeriodInputContainer.Visibility = Visibility.Visible;
+            }
+            else if(SampleSource.sourceType == SampleSource.DataSourceType.SoundCard)
+            {
+                audioPathInput.Visibility = Visibility.Collapsed;
+                browseAudioFileBtn.Visibility = Visibility.Collapsed;
+                stopAudioBtn.Visibility = Visibility.Collapsed;
+                readPeriodInputContainer.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -271,6 +302,22 @@ namespace RX_SSDV
             {
                 freqShiftBox.Text = mainDSP.bpskDemod.freqShift.Freq.ToString();
             }
+        }
+
+        private void satDataList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            PacketInfo? packet = satDataList.SelectedItem as PacketInfo;
+            SatDataUI.SelectPacket(packet);
+        }
+
+        private void clearSatDataBtn_Click(object sender, RoutedEventArgs e)
+        {
+            SatDataUI.ClearPackets();
+        }
+
+        private void clearLogBtn_Click(object sender, RoutedEventArgs e)
+        {
+            Logger.ClearLog();
         }
 
         //private void applyFilterBtn_Click(object sender, RoutedEventArgs e)

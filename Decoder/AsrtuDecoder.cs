@@ -21,8 +21,11 @@ namespace RX_SSDV.Decoder
 
         public readonly string resDirPath = $"{AppDomain.CurrentDomain.BaseDirectory}outputs";
         public readonly string binaryFilePath = $"{AppDomain.CurrentDomain.BaseDirectory}outputs/ssdv-packets.bin";
-        public readonly string imageFilePath = $"{AppDomain.CurrentDomain.BaseDirectory}outputs/output-image.jpg";
+        public string imageFilePath = $"{AppDomain.CurrentDomain.BaseDirectory}outputs/output-image.jpg";
         public readonly string ssdvDecoderPath = $"{AppDomain.CurrentDomain.BaseDirectory}ssdv.exe";
+
+        public const int RECEIVE_TIMEOUT_BASEBAND = 1000;
+        public const int RECEIVE_TIMEOUT_DEFAULT = 4000;
 
         Process process;
         ProcessStartInfo startInfo;
@@ -32,6 +35,9 @@ namespace RX_SSDV.Decoder
             0x55, 0x66, 0xDA, 0x4B, 0xF8, 0xEF, 0x00
         };
 
+        private int lastImageId = -1;
+        private int lastPacketId = -1;
+
         Timer? decoderTimer;
 
         public AsrtuDecoder()
@@ -39,38 +45,45 @@ namespace RX_SSDV.Decoder
             byteOutput = new ByteOutput(binaryFilePath);
             dataBuffer = new byte[256];
 
-            process = new Process();
-            startInfo = new ProcessStartInfo(ssdvDecoderPath, $"-d {binaryFilePath} {imageFilePath}"); // ssdv.exe -d ssdv-packets.bin output-image.jpg
-            startInfo.CreateNoWindow = true;
-            process.StartInfo = startInfo;
+            //SetupDecoder();
+            //CheckOutputFiles();
 
             SampleSource.onStop += () => { byteOutput.CloseStream(); };
-            SampleSource.onStart += () => { byteOutput.OpenStream(); CheckOutputFiles(); };
+            SampleSource.onStart += () => { /*byteOutput.OpenStream(); CheckOutputFiles();*/ };
+            SampleSource.onSourceChange += (waveFmt) => { ResetTimer(); };
 
-            decoderTimer = new Timer(1000);
-            decoderTimer.Elapsed += (object? e, ElapsedEventArgs args) => { 
-                decoderTimer.Close(); 
-                decoderTimer.Dispose(); 
-                decoderTimer = null; 
-                DecodeSSDV();
-
-                Logger.LogInfo("[ASTRU-1] Processing SSDV packets...");
-            };
-
-            CheckOutputFiles();
+            ResetTimer();
         }
 
         private void ResetTimer()
         {
-            decoderTimer = new Timer(1000);
-            decoderTimer.Elapsed += (object? e, ElapsedEventArgs args) => { 
-                decoderTimer.Close(); 
-                decoderTimer.Dispose(); 
-                decoderTimer = null; 
-                DecodeSSDV();
-
-                Logger.LogInfo("[ASTRU-1] Processing SSDV packets...");
+            if(SampleSource.sourceType == SampleSource.DataSourceType.BasebandFile)
+            {
+                decoderTimer = new Timer(RECEIVE_TIMEOUT_BASEBAND);
+            }
+            else
+            {
+                decoderTimer = new Timer(RECEIVE_TIMEOUT_DEFAULT);
+            }
+            decoderTimer.Elapsed += (object? e, ElapsedEventArgs args) => {
+                DecoderTimerElspsed();
             };
+        }
+
+        private void DecoderTimerElspsed()
+        {
+            //lastImageId = -1;
+            //lastPacketId = -1;
+
+            if (decoderTimer != null)
+            {
+                decoderTimer.Close();
+                decoderTimer.Dispose();
+                decoderTimer = null;
+                DecodeSSDV();
+            }
+
+            Logger.LogInfo("[Packet RX][ASTRU-1] Processing SSDV packets...");
         }
 
         public void ProcessPacket(byte[] packet)
@@ -81,7 +94,7 @@ namespace RX_SSDV.Decoder
             {
                 if (packet[1] == 0x22) // SSDV packet
                 {
-                    Logger.CLogInfo("[Packet RX][ASRTU-1] SSDV packet received.");
+                    //Logger.CLogInfo("[Packet RX][ASRTU-1] SSDV packet received.");
 
                     // Restart timer
                     if (decoderTimer == null)
@@ -97,11 +110,28 @@ namespace RX_SSDV.Decoder
                     // Replace with standard SSDV header
                     ReplaceSSDVHeader();
 
+                    // Read packet header
+                    int packetId, imageId;
+                    (imageId, packetId) = ReadHeaderId(dataBuffer);
+                    Logger.CLogInfo($"[Packet RX][ASRTU-1] SSDV packet received. Image id: {imageId}, Packet id: {packetId}");
+
+                    // Is this a new picture?
+                    if (imageId != lastImageId || packetId != lastPacketId + 1)
+                    {
+                        OnReceiveNewImage();
+
+                        Logger.CLogInfo($"[Packet RX][ASRTU-1] New SSDV Image, Image id: {imageId}, Inital packet id: {packetId}");
+                        if(packetId != 0)
+                            Logger.CLogWarn($"[Packet RX][ASTRU-1] The ID of the new packet is not equal to 0. The SSDV decoder may not be able to output an image, and it will not clear the previous binary data cache.");
+                        PostPacket(PacketData.PacketType.Image);
+                    }
+                    lastImageId = imageId;
+                    lastPacketId = packetId;
+
                     // If we found the packet that its id equals 0x00, it must be the first packet.
                     if (dataBuffer[8] == 0x00)
                     {
                         byteOutput.ClearFile();
-                        PostPacket(PacketData.PacketType.Image);
                     }
                     
                     // Calculate CRC32
@@ -119,16 +149,21 @@ namespace RX_SSDV.Decoder
                             crcByte = 0;
                         }
                     }
-                    
+
                     byteOutput.WriteBytes(dataBuffer); // Write file
-                    //DecodeSSDV();
                 }
                 else if (packet[1] == 0x24) //Telemetry packet
                 {
-                    Logger.CLogInfo("[Packet RX][ASRTU-1]Telemetry packet received.");
+                    Logger.CLogInfo("[Packet RX][ASRTU-1] Telemetry packet received.");
                     PostPacket(PacketData.PacketType.Telemetry);
                 }
             }
+        }
+
+        private void OnReceiveNewImage()
+        {
+            SetupDecoder();
+            CheckOutputFiles();
         }
 
         public void PostPacket(PacketData.PacketType type)
@@ -154,6 +189,13 @@ namespace RX_SSDV.Decoder
 
             PacketInfo packetInfo = new PacketInfo("ASRTU-1(AO-123)", typeStr, additionalMsg, data);
             SatDataUI.RegisterPacket(packetInfo);
+        }
+
+        private (int,int) ReadHeaderId(byte[] packet)
+        {
+            byte imageId = packet[6];
+            int packetId = (packet[7] << 8) | packet[8];
+            return (imageId, packetId);
         }
 
         private uint CalcCRC32(byte[] buffer)
@@ -190,6 +232,18 @@ namespace RX_SSDV.Decoder
             }
         }
 
+        private void SetupDecoder()
+        {
+            string perfix = DateTime.Now.ToString().Replace(" ", "").Replace(":", "").Replace("/", "");
+            string filename = $"output-image-{perfix}.jpg";
+            imageFilePath = $"{AppDomain.CurrentDomain.BaseDirectory}outputs/{filename}";
+
+            process = new Process();
+            startInfo = new ProcessStartInfo(ssdvDecoderPath, $"-d {binaryFilePath} {imageFilePath}"); // ssdv.exe -d ssdv-packets.bin output-image.jpg
+            startInfo.CreateNoWindow = true;
+            process.StartInfo = startInfo;
+        }
+
         private void CheckOutputFiles()
         {
             if (!Directory.Exists(resDirPath))
@@ -200,13 +254,20 @@ namespace RX_SSDV.Decoder
                 File.Create(imageFilePath);
 
             // also, we need to clear the output image file to make sure the ssdv.exe can works properly
-            using(FileStream stream = new FileStream(imageFilePath, FileMode.Create, FileAccess.ReadWrite))
+            try
             {
-                stream.Seek(0, SeekOrigin.Begin);
-                stream.SetLength(0);
-                stream.Flush();
-                stream.Close();
-                stream.Dispose();
+                using (FileStream stream = new FileStream(imageFilePath, FileMode.Create, FileAccess.ReadWrite))
+                {
+                    stream.Seek(0, SeekOrigin.Begin);
+                    stream.SetLength(0);
+                    stream.Flush();
+                    stream.Close();
+                    stream.Dispose();
+                }
+            }
+            catch(Exception)
+            {
+                Logger.CLogWarn("[Packet RX][ASRTU-1] Failed to clear the output image file; it may be in use.");
             }
         }
 
@@ -228,6 +289,8 @@ namespace RX_SSDV.Decoder
             {
                 process.WaitForExit();
                 process.Close();
+
+                Logger.CLogInfo("[Packet RX][ASRTU-1] Packet process completed.");
 
                 if (SatDataUI.currentImagePacket != null && SatDataUI.currentImagePacket.imagePath == imageFilePath)
                 {

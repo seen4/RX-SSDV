@@ -37,6 +37,9 @@ namespace RX_SSDV.IO
 
         public void ClearFile()
         {
+            if (!isStreamOpened)
+                return;
+
             fileStream.Seek(0, SeekOrigin.Begin);
             fileStream.SetLength(0);
         }

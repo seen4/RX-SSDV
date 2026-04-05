@@ -48,7 +48,7 @@ namespace RX_SSDV.DSP
         //public const int FFT_MIN = 0;
         public const int FFT_POS = 100;
         public const int FFT_RANGE = -1;//2048
-        public int spectrumPeriod = 5;
+        public int spectrumPeriod = 1;
         public int fftDatasetIndex = 0;
         public double[][] fftDataset;
         public Bitmap spectrumCacheBitmap;
@@ -124,7 +124,7 @@ namespace RX_SSDV.DSP
             }
         }
         private int constellationStepsize = 1;
-        private float constellationMultiply = 100;
+        private float constellationMultiply = 25;
         #endregion
 
         public MainDSP(CanvasGraphicDrawer spectrumArea, CanvasGraphicDrawer constellationAreaOrigin, CanvasGraphicDrawer clonstellationAreaProcessed)

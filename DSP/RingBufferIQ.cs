@@ -148,11 +148,52 @@ namespace RX_SSDV.DSP
             }
         }
 
-        [Obsolete("Please use RingBufferIQ[index] instead")]
+        public void WriteSignleI(float[] inputSamplesI, int length)
+        {
+            if (length > inputSamplesI.Length)
+                throw new ArgumentException("The 'length' is to big.");
+            if (length > bufferSize)
+                throw new ArgumentException("Write length cannot exceed buffer size.");
+
+            int remainedSpace = bufferSize - inputIndex;
+            int inputLength = length;
+            if (remainedSpace >= inputLength)
+            {
+                inputSamplesI.FastCopyTo(bufferI, inputLength, 0, inputIndex);
+                inputIndex += inputLength;
+
+                if (inputIndex == bufferSize)
+                    inputIndex = 0;
+            }
+            else
+            {
+                int copyLength = inputLength - remainedSpace;
+                inputSamplesI.FastCopyTo(bufferI, remainedSpace, 0, inputIndex);
+                inputIndex = 0;
+                inputSamplesI.FastCopyTo(bufferI, copyLength, remainedSpace, inputIndex);
+                inputIndex += copyLength;
+            }
+
+            //UpdateDataCount();
+            if (availableDataCount < bufferSize)
+            {
+                availableDataCount += inputLength;
+            }
+
+            if (availableDataCount > bufferSize)
+            {
+                availableDataCount = bufferSize;
+            }
+        }
+
         public void Read(float[] outputI, float[] outputQ, int startIndex = 0, int length = -1)
         {
-            if (outputI.Length != outputQ.Length || length < outputI.Length || length > availableDataCount)
-                return;
+            if (outputI.Length != outputI.Length)
+                throw new ArgumentException("outputI.Length must equals outputI.Length");
+            if (length > outputI.Length)
+                throw new ArgumentException("The 'length' is to big.");
+            if (length > availableDataCount)
+                throw new ArgumentException("Read length cannot exceed buffer size.");
 
             if (length == -1)
                 length = outputI.Length;
@@ -176,6 +217,7 @@ namespace RX_SSDV.DSP
                 bufferQ.FastCopyTo(outputQ, remainLength, outputIndex, copyLength);
                 outputIndex += remainLength;
             }
+
             availableDataCount -= length;
         }
     }
