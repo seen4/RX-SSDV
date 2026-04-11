@@ -64,6 +64,8 @@ namespace RX_SSDV
 
             Init();
 
+            SampleSource.ListDevices();
+
             //ViterbiTest test = new ViterbiTest();
             //test.Test();
             //DelayTest.Test();

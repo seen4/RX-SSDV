@@ -1,4 +1,5 @@
-﻿using NAudio.Wave;
+﻿using NAudio.CoreAudioApi;
+using NAudio.Wave;
 using NWaves.Effects.Stereo;
 using RX_SSDV.Base;
 using RX_SSDV.DSP;
@@ -34,8 +35,11 @@ namespace RX_SSDV.IO
         private static SampleAggregator sampleAggregator;
 
         //private static WaveOutEvent waveOutEvent = new WaveOutEvent();
+        //private static MMDeviceEnumerator enumerator = new MMDeviceEnumerator();
+        //private static MMDevice[] captureDevices = enumerator.EnumerateAudioEndPoints(DataFlow.Capture, NAudio.CoreAudioApi.DeviceState.Active).ToArray();
         private static IWavePlayer playbackDevice;
 
+        public static WaveIn waveIn = new WaveIn();
         public static WasapiLoopbackCapture capture = new WasapiLoopbackCapture();
         private static float[] soundcardOutputBufferI = new float[WAV_BUFFER_SIZE];
         private static float[] soundcardOutputBufferQ = new float[WAV_BUFFER_SIZE];
@@ -89,6 +93,16 @@ namespace RX_SSDV.IO
         }
 
         #region General
+        public static void ListDevices()
+        {
+            Logger.CLogInfo($"{ WaveIn.DeviceCount} audio devices founded");
+            for (int i = 0; i < WaveIn.DeviceCount; i++)
+            {
+                WaveInCapabilities capa = WaveIn.GetCapabilities(i);
+                Logger.CLogInfo($" Name: {capa.ProductName}, Id: {i}");
+            }
+        }
+
         //Init sample sources
         public static void InitSource()
         {
@@ -100,16 +114,25 @@ namespace RX_SSDV.IO
             }
             else if (sourceType == DataSourceType.SoundCard)
             {
-                Logger.CLogInfo(capture.WaveFormat.Channels.ToString());
-                capture.DataAvailable += (object? sender, WaveInEventArgs e) =>
-                {
-                    //float[] samples = Enumerable
-                    //    .Range(0, e.BytesRecorded / 4)
-                    //    .Select(i => BitConverter.ToSingle(e.Buffer, i * 4))
-                    //    .ToArray();
+                //waveIn.DeviceNumber = 1;
+                //waveIn.WaveFormat = new WaveFormat(48000, 2);
+                //waveIn.DataAvailable += (object? sender, WaveInEventArgs e) =>
+                //{
+                //    ProcessCaptureSamples(e);
+                //};
 
-                    ProcessCaptureSamples(e);
-                };
+                //Logger.CLogInfo(capture.WaveFormat.Channels.ToString());
+                //capture.DataAvailable += (object? sender, WaveInEventArgs e) =>
+                //{
+                //    //float[] samples = Enumerable
+                //    //    .Range(0, e.BytesRecorded / 4)
+                //    //    .Select(i => BitConverter.ToSingle(e.Buffer, i * 4))
+                //    //    .ToArray();
+
+                //    ProcessCaptureSamples(e);
+                //};
+                
+                capture.DataAvailable += ProcessCaptureSamples;
             }
         }
 
@@ -167,17 +190,20 @@ namespace RX_SSDV.IO
         {
             InitSource();
             capture.StartRecording();
+            //waveIn.StartRecording();
             onSourceChange(capture.WaveFormat);
         }
 
         private static void PauseSoundCardRecord()
         {
             capture.StopRecording();
+            //waveIn.StopRecording();
         }
 
-        public static void ProcessCaptureSamples(WaveInEventArgs e)
+        public static void ProcessCaptureSamples(object? sender, WaveInEventArgs e)
         {
             // Buffer bytes => IQ buffers
+
             for (int i = 0; i < e.BytesRecorded / 4; i++)
             {
                 float sample = BitConverter.ToSingle(e.Buffer, i * 4);
@@ -187,7 +213,7 @@ namespace RX_SSDV.IO
                     soundcardOutputBufferQ[channelBufferIndex] = sample;
 
                 channelFlag += 1;
-                if (channelFlag == capture.WaveFormat.Channels)
+                if (channelFlag == ((WasapiLoopbackCapture)sender).WaveFormat.Channels)
                 {
                     channelBufferIndex++;
                     channelFlag = 0;

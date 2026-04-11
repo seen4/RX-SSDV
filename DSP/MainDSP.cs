@@ -48,6 +48,7 @@ namespace RX_SSDV.DSP
         //public const int FFT_MIN = 0;
         public const int FFT_POS = 100;
         public const int FFT_RANGE = -1;//2048
+        public float fftScale = 0.01f;
         public int spectrumPeriod = 1;
         public int fftDatasetIndex = 0;
         public double[][] fftDataset;
@@ -353,7 +354,7 @@ namespace RX_SSDV.DSP
             fftDatasetIndex++;
 
             points = actualProcess
-                .Select((v, i) => new Point((int)(i * ((float)spectrum.Width / actualProcess.Length)), spectrum.Height - (int)(v * 2) - FFT_POS))
+                .Select((v, i) => new Point((int)(i * ((float)spectrum.Width / actualProcess.Length)), spectrum.Height - (int)(v * fftScale) - FFT_POS))
                 .ToArray();   // 将数据转换为一个个的坐标点
 
             spectrum.Draw((graphics) =>
@@ -402,7 +403,7 @@ namespace RX_SSDV.DSP
                 for (int i = 0, j = readerIndex; i < fftDataset.Length; i++, j--)
                 {
                     if (j < 0)
-                    {
+                    { 
                         j = fftDataset.Length - 1;
                     }
                     //double[] data = fftDataset[^(i + 1)];
@@ -417,7 +418,7 @@ namespace RX_SSDV.DSP
                             {
                                 x = lastX + 1;
                             }
-                            int value = (int)Math.Clamp(data[k] * 20, 0, 255);
+                            int value = (int)Math.Clamp(data[k] * fftScale, 0, 255);
                             //spectrumCacheBitmap.SetPixel(x, 0, Color.FromArgb(value, 0, 255 / 4));
                             spectrumCacheBitmap.SetPixel(x, 0, ColorFade.GetColorHSV(value, 0, 255));
                             lastX = x;
@@ -498,7 +499,7 @@ namespace RX_SSDV.DSP
 
             if(!isDrawerPrepared)
                 isDrawerPrepared = true;
-        }
+        } 
 
         /// <summary>
         /// Process BPSK.
