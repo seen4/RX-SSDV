@@ -3,6 +3,9 @@ A simple baseband SSDV decoder based on `WPF`.<br>
 Decoder used: [SSDV](https://github.com/fsphil/ssdv)<br>
 **Note**: This project is still under development, so there may be a large number of bugs and the features are not very complete.
 
+### Tips
+Use a virtual sound card as audio input(in windows settings) to achieve better demodulation results.
+
 ## How to use
 ### Use baseband source
 *Note: Limited function*
