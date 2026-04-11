@@ -1,3 +1,5 @@
+[English README](https://github.com/AstarLC4036/RX-SSDV/blob/main/README.md) | [中文 READNE](https://github.com/AstarLC4036/RX-SSDV/blob/main/README_zh-cn.md)
+
 # RX-SSDV (en-us)
 A simple baseband SSDV decoder based on `WPF`.<br>
 Decoder used: [SSDV](https://github.com/fsphil/ssdv)<br>
