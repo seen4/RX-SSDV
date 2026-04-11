@@ -1,4 +1,4 @@
-[English README](https://github.com/AstarLC4036/RX-SSDV/blob/main/README.md) [中文 READNE](https://github.com/AstarLC4036/RX-SSDV/blob/main/README_zh-cn.md)
+[English README](https://github.com/AstarLC4036/RX-SSDV/blob/main/README.md) | [中文 READNE](https://github.com/AstarLC4036/RX-SSDV/blob/main/README_zh-cn.md)
 
 # RX-SSDV (zh-cn)
 一个基于 `WPF` 的简单SSDV基带解码器。<br>
