@@ -277,6 +277,23 @@ namespace RX_SSDV
             }
         }
 
+        private void spectrumScaleBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            float spectrumScale = mainDSP.spectrumScale;
+            if (float.TryParse(spectrumScaleBox.Text, out spectrumScale))
+            {
+                spectrumScaleBox.Text = $"{spectrumScale}";
+                if (mainDSP != null)
+                {
+                    mainDSP.spectrumScale = spectrumScale;
+                }
+            }
+            else
+            {
+                spectrumScaleBox.Text = mainDSP.spectrumScale.ToString();
+            }
+        }
+
         private void sampleReadPeriodInput_LostFocus(object sender, RoutedEventArgs e)
         {
             int period = SampleSource.readPeriod;
