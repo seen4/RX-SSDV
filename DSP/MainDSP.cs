@@ -393,7 +393,8 @@ namespace RX_SSDV.DSP
                     $"\nBandwidth: {bandwidth}kHz, Frequency Shift: {frequencyShift}kHz" +
                     $"\nTime {SampleSource.GetFormatedTimeString()}" +
                     $"\nCostas Loop [freq = {bpskDemod.costasLoop.Phase}, phase = {bpskDemod.costasLoop.Phase}]" +
-                    $"\nClock Sync [mu = {bpskDemod.clockRecovery.Mu}, omega = {bpskDemod.clockRecovery.Omega}]",
+                    $"\nClock Sync [mu = {bpskDemod.clockRecovery.Mu}, omega = {bpskDemod.clockRecovery.Omega}]" +
+                    $"\nSNR: {bpskDemod.snr_estimator.snr()}db",
                     font, brush, new Point(5, 5));
 
                 //Separator
