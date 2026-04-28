@@ -29,10 +29,10 @@ namespace RX_SSDV.DSP
         {
             for (int i = 0; i < inputSize; i++)
             {
-                float y1 = MathF.Pow((MathF.Sqrt(MathF.Pow(inputReal[i],2)+MathF.Pow(inputImag[i],2))),2);
+                float y1 = MathF.Pow(inputReal[i],2)+MathF.Pow(inputImag[i],2);
                 d_y1 = d_alpha * y1 + d_beta * d_y1;
 
-                float y2 = MathF.Pow((MathF.Sqrt(MathF.Pow(inputReal[i], 2) + MathF.Pow(inputImag[i], 2))), 4);
+                float y2 = MathF.Pow(MathF.Pow(inputReal[i], 2) + MathF.Pow(inputImag[i], 2), 2);
                 d_y2 = d_alpha * y2 + d_beta * d_y2;
             }
 

@@ -150,8 +150,6 @@ namespace RX_SSDV.DSP
             int agcOutputSize = agc.Process(realSignal.Length, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
             ConfigureOutput();
 
-            snr_estimator.update(agcOutputSize, inputBufferI, inputBufferQ);
-
             int costasOutputSize = costasLoop.Process(realSignal.Length, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
             ConfigureOutput();
 
@@ -162,6 +160,8 @@ namespace RX_SSDV.DSP
             ConfigureOutput();
 
             int equalizerOutputSize = equalizer.Process(clockOutputSize, inputBufferI, inputBufferQ, outputBufferI, outputBufferQ);
+
+            snr_estimator.update(equalizerOutputSize, outputBufferI, outputBufferQ);
 
             outputCount = equalizerOutputSize;
 
