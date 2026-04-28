@@ -571,8 +571,10 @@ namespace RX_SSDV.DSP
                 }
                 fft.Direct(realSignal, imagSignal, fftReal, fftImag);
 
+                const double offset = 0.00000001; //Add a tiny offset to prevent doing Log10(0)
+
                 double[] tempSpectrum = fftReal
-                    .Select((v, i) => Math.Sqrt(v * v + fftImag[i] * fftImag[i]))
+                    .Select((v, i) => 10*Math.Log10( Math.Sqrt(v * v + fftImag[i] * fftImag[i]) + offset) )
                     .ToArray();
 
                 //must new object, or use object pool
